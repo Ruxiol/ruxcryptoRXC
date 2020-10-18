@@ -1,0 +1,6 @@
+usr/local/bin/ruxcrypto-qt usr/bin
+share/pixmaps/ruxcrypto32.xpm usr/share/pixmaps
+share/pixmaps/ruxcrypto16.xpm usr/share/pixmaps
+share/pixmaps/ruxcrypto128.png usr/share/pixmaps
+debian/ruxcrypto-qt.desktop usr/share/applications
+debian/ruxcrypto-qt.protocol usr/share/kde4/services/

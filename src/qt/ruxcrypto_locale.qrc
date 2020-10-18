@@ -1,0 +1,25 @@
+<!DOCTYPE RCC><RCC version="1.0">
+    <qresource prefix="/translations">
+        <file alias="ar">locale/ruxcrypto_ar.qm</file>
+        <file alias="bg">locale/ruxcrypto_bg.qm</file>
+        <file alias="de">locale/ruxcrypto_de.qm</file>
+        <file alias="en">locale/ruxcrypto_en.qm</file>
+        <file alias="es">locale/ruxcrypto_es.qm</file>
+        <file alias="fi">locale/ruxcrypto_fi.qm</file>
+        <file alias="fr">locale/ruxcrypto_fr.qm</file>
+        <file alias="it">locale/ruxcrypto_it.qm</file>
+        <file alias="ja">locale/ruxcrypto_ja.qm</file>
+        <file alias="ko">locale/ruxcrypto_ko.qm</file>
+        <file alias="nl">locale/ruxcrypto_nl.qm</file>
+        <file alias="pl">locale/ruxcrypto_pl.qm</file>
+        <file alias="pt">locale/ruxcrypto_pt.qm</file>
+        <file alias="ru">locale/ruxcrypto_ru.qm</file>
+        <file alias="sk">locale/ruxcrypto_sk.qm</file>
+        <file alias="sv">locale/ruxcrypto_sv.qm</file>
+        <file alias="th">locale/ruxcrypto_th.qm</file>
+        <file alias="tr">locale/ruxcrypto_tr.qm</file>
+        <file alias="vi">locale/ruxcrypto_vi.qm</file>
+        <file alias="zh_CN">locale/ruxcrypto_zh_CN.qm</file>
+        <file alias="zh_TW">locale/ruxcrypto_zh_TW.qm</file>
+    </qresource>
+</RCC>

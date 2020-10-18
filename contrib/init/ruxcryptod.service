@@ -1,0 +1,22 @@
+[Unit]
+Description=RuxCrypto's distributed currency daemon
+After=network.target
+
+[Service]
+User=ruxcryptocore
+Group=ruxcryptocore
+
+Type=forking
+PIDFile=/var/lib/ruxcryptod/ruxcryptod.pid
+ExecStart=/usr/bin/ruxcryptod -daemon -pid=/var/lib/ruxcryptod/ruxcryptod.pid \
+-conf=/etc/ruxcryptocore/ruxcrypto.conf -datadir=/var/lib/ruxcryptod -disablewallet
+
+Restart=always
+PrivateTmp=true
+TimeoutStopSec=60s
+TimeoutStartSec=2s
+StartLimitInterval=120s
+StartLimitBurst=5
+
+[Install]
+WantedBy=multi-user.target
