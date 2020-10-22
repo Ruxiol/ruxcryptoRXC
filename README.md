@@ -18,11 +18,11 @@ RPC port 23505
 
 P2P port 23506
 
-Block reward 50 coins
+Block reward 45 coins
 
-Block halving 210000 blocks
+Block halving 210.000 blocks
 
-Coin supply 21000000 coins
+Coin supply 21.000.000 coins
 
 Fell free to join our learning attempt.
 
