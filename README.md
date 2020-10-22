@@ -20,6 +20,8 @@ P2P port 23506
 
 Block reward 45 coins
 
+Super block cycle 8760
+
 Block halving 210.000 blocks
 
 Coin supply 21.000.000 coins
@@ -28,6 +30,6 @@ Fell free to join our learning attempt.
 
 Contributors
 
-Rux
+Rux:D
 
 ===========================
