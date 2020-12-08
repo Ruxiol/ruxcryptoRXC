@@ -1,6 +1,6 @@
 ===========================
 
-RuxCrypto RXC is DASH fork, Crypto.ba community effort to fork DASH protocol.
+RuxCrypto RXC is DASH fork, Crypto.ba community project.
 
 Algorithm X11
 
@@ -26,10 +26,11 @@ Block halving 210.000 blocks
 
 Coin supply 21.000.000 coins
 
-Fell free to join our learning attempt.
+
 
 Contributors
 
-Rux:D
+Rux
+rux@crypto.ba
 
 ===========================
