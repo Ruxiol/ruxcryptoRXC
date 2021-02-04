@@ -1,5 +1,9 @@
 ===========================
 
+Crypto.ba
+
+rxc.crypto.ba
+
 RuxCrypto RXC is DASH fork, Crypto.ba community project.
 
 Algorithm X11
