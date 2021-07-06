@@ -314,10 +314,9 @@ public:
         assert(consensus.hashGenesisBlock == uint256S("0x00000c63f5826a523923939a5adf28657c2a6b76764f1af99bb39437006489d3"));
         assert(genesis.hashMerkleRoot == uint256S("0x38f611bbc7d2e792fddd4804f2c570a6b1e86e9314b570fdc5d881e20cc76fa7"));
 
+        vSeeds.push_back(CDNSSeedData("crypto.ba",  "rxcnode.crypto.ba"));				      
 
-        vSeeds.push_back(CDNSSeedData("rxcnode.crypto.ba"));
-
-        base58Prefixes[PUBKEY_ADDRESS] = std::vector<unsigned char>(1,60);
+	base58Prefixes[PUBKEY_ADDRESS] = std::vector<unsigned char>(1,60);
         base58Prefixes[SCRIPT_ADDRESS] = std::vector<unsigned char>(1,61);
         base58Prefixes[SECRET_KEY] =     std::vector<unsigned char>(1,188);
         // RuxCrypto BIP32 pubkeys start with 'xpub' (Bitcoin defaults)
