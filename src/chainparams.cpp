@@ -403,7 +403,19 @@ public:
         nPoolMaxParticipants = 5;
         nFulfilledRequestExpireTime = 60*60; // fulfilled requests expire in 1 hour
 
-        vSporkAddresses = {"RKmrxcAC9Y1tw9h17Pe7VjHjyfyjicqPLt"};
+        // Rotated at the PoS fork. The previous key must be treated as exposed,
+        // and a spork key is worth rotating on suspicion alone rather than on
+        // proof -- it costs one release and a handful of re-signed sporks.
+        //
+        // Changing this list invalidates every spork signed by the old key, and
+        // they do NOT survive as their last-seen values: each falls back to the
+        // default compiled into mapSporkDefaults. Three are currently signed ON
+        // against defaults of OFF, and two of them matter --
+        // SPORK_17_QUORUM_DKG_ENABLED, without which no quorum is ever built,
+        // and SPORK_19_CHAINLOCKS_ENABLED. They have to be re-signed with the
+        // new key as soon as the network is on this build, or the fork turns off
+        // the very machinery it exists to enable.
+        vSporkAddresses = {"RFieLTUMaBeG2CVqEFprz9zCqM7fYgsCa9"};
         nMinSporkKeys = 1;
         fBIP9CheckMasternodesUpgraded = true;
 
