@@ -19,6 +19,7 @@
 #include "hash.h"
 #include "init.h"
 #include "policy/policy.h"
+#include "pos.h"
 #include "pow.h"
 #include "primitives/block.h"
 #include "primitives/transaction.h"
@@ -577,6 +578,28 @@ bool CheckTransaction(const CTransaction& tx, CValidationState &state)
 bool ContextualCheckTransaction(const CTransaction& tx, CValidationState &state, const Consensus::Params& consensusParams, const CBlockIndex* pindexPrev)
 {
     int nHeight = pindexPrev == NULL ? 0 : pindexPrev->nHeight + 1;
+    // Proof-of-stake rules. All of them are keyed on the height, so below the
+    // fork this block is exactly as unreachable as it was before it was written.
+    const bool fProofOfStake = block.IsProofOfStake();
+
+    if (fProofOfStake && !IsPoSEnabled(nHeight, consensusParams))
+        return state.DoS(100, false, REJECT_INVALID, "pos-too-early", false, "proof-of-stake block before the fork height");
+
+    if (!fProofOfStake && IsPoWDisabled(nHeight, consensusParams))
+        return state.DoS(100, false, REJECT_INVALID, "pow-ended", false, "proof-of-work block after mining ended");
+
+    if (IsPoSEnabled(nHeight, consensusParams)) {
+        // The header-only path trusts nNonce == 0 to mean "stake". This is where
+        // that claim is settled against the transactions, so a proof-of-work
+        // block cannot borrow the marker to skip the work check, and a stake
+        // cannot hide from the marker by leaving a nonce behind.
+        if (fProofOfStake != (block.nNonce == 0))
+            return state.DoS(100, false, REJECT_INVALID, "bad-pos-marker", false, "nNonce disagrees with the coinstake");
+
+        if (!CheckBlockSignature(block))
+            return state.DoS(100, false, REJECT_INVALID, "bad-blocksig", false, "block signature verification failed");
+    }
+
     bool fDIP0001Active_context = nHeight >= consensusParams.DIP0001Height;
     bool fDIP0003Active_context = nHeight >= consensusParams.DIP0003Height;
 
@@ -1909,6 +1932,39 @@ static bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockInd
         if (!fJustCheck)
             view.SetBestBlock(pindex->GetBlockHash());
         return true;
+    }
+
+    // Proof of stake.
+    //
+    // This has to happen before the transaction loop below, because the kernel is
+    // evaluated against the coin the block stakes -- and a few hundred lines from
+    // here that coin will have been spent and taken out of the view.
+    if (IsPoSEnabled(pindex->nHeight, chainparams.GetConsensus())) {
+        if (block.IsProofOfStake()) {
+            const COutPoint& prevout = block.vtx[1]->vin[0].prevout;
+            const Coin& coin = view.AccessCoin(prevout);
+            if (coin.IsSpent())
+                return state.DoS(100, false, REJECT_INVALID, "bad-stake-missing", false, "staked output does not exist");
+
+            // Age is counted in confirmations rather than seconds so that it
+            // cannot be stretched by a miner lying about the time.
+            const int nDepth = pindex->nHeight - coin.nHeight;
+            if (nDepth < chainparams.GetConsensus().nStakeMinConfirmations)
+                return state.DoS(100, false, REJECT_INVALID, "bad-stake-depth", false,
+                                 strprintf("staked output only %d confirmations deep", nDepth));
+
+            uint256 hashProofOfStake;
+            if (!CheckStakeKernelHash(block.nBits, pindex->pprev->nStakeModifier, prevout,
+                                      coin.out.nValue, block.nTime, chainparams.GetConsensus(),
+                                      hashProofOfStake))
+                return state.DoS(100, false, REJECT_INVALID, "bad-stake-kernel", false, "stake does not meet target");
+        }
+
+        // Advance the modifier chain. Every block does this, stake or not: the
+        // point of the modifier is that it cannot be known ahead of time, and a
+        // run of proof-of-work blocks that left it standing still would hand
+        // stakers exactly the predictability it exists to deny them.
+        pindex->nStakeModifier = ComputeStakeModifier(pindex->pprev, StakeModifierKernelFor(block));
     }
 
     bool fScriptChecks = true;
@@ -3269,7 +3325,12 @@ bool CheckBlock(const CBlock& block, CValidationState& state, const Consensus::P
 
     // Check that the header is valid (particularly PoW).  This is mostly
     // redundant with the call in AcceptBlockHeader.
-    if (!CheckBlockHeader(block, state, consensusParams, fCheckPOW))
+    //
+    // Here the whole block is in hand, so there is no need for the nNonce marker
+    // the header-only path relies on -- a coinstake is either present or it is
+    // not. Whether a stake is ALLOWED at this height is a contextual question,
+    // answered in ContextualCheckBlock.
+    if (!CheckBlockHeader(block, state, consensusParams, fCheckPOW && !block.IsProofOfStake()))
         return false;
 
     // Check the merkle root.
@@ -3454,16 +3515,35 @@ static bool AcceptBlockHeader(const CBlockHeader& block, CValidationState& state
             return true;
         }
 
-        if (!CheckBlockHeader(block, state, chainparams.GetConsensus()))
-            return error("%s: Consensus::CheckBlockHeader: %s, %s", __func__, hash.ToString(), FormatStateMessage(state));
-
         // Get prev block index
+        //
+        // This lookup used to come after CheckBlockHeader, but the proof-of-work
+        // check inside it now depends on the height, so the height has to be
+        // known first. Nothing is lost by reordering: a header whose parent we
+        // do not have was going to be rejected here anyway.
         CBlockIndex* pindexPrev = NULL;
         BlockMap::iterator mi = mapBlockIndex.find(block.hashPrevBlock);
         if (mi == mapBlockIndex.end())
             return state.DoS(10, error("%s: prev block not found", __func__), 0, "bad-prevblk");
         pindexPrev = (*mi).second;
         assert(pindexPrev);
+
+        // A proof-of-stake block carries no work, so demanding one here would
+        // reject every stake before anyone looked inside the block. But a header
+        // has no transactions, so there is no coinstake to recognise it by --
+        // hence the marker: stakers leave nNonce at zero, which they have no use
+        // for anyway.
+        //
+        // Below the fork the marker is not consulted at all, so no historical
+        // block can be reinterpreted by what happens to sit in its nNonce. A
+        // proof-of-work block that sets the marker to dodge this check gets no
+        // further than CheckBlock, where the transactions are available and the
+        // two must agree.
+        const bool fLooksProofOfStake = IsPoSEnabled(pindexPrev->nHeight + 1, chainparams.GetConsensus()) &&
+                                        block.nNonce == 0;
+
+        if (!CheckBlockHeader(block, state, chainparams.GetConsensus(), !fLooksProofOfStake))
+            return error("%s: Consensus::CheckBlockHeader: %s, %s", __func__, hash.ToString(), FormatStateMessage(state));
 
         if (pindexPrev->nStatus & BLOCK_FAILED_MASK)
             return state.DoS(100, error("%s: prev block invalid", __func__), REJECT_INVALID, "bad-prevblk");
