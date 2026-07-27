@@ -578,28 +578,6 @@ bool CheckTransaction(const CTransaction& tx, CValidationState &state)
 bool ContextualCheckTransaction(const CTransaction& tx, CValidationState &state, const Consensus::Params& consensusParams, const CBlockIndex* pindexPrev)
 {
     int nHeight = pindexPrev == NULL ? 0 : pindexPrev->nHeight + 1;
-    // Proof-of-stake rules. All of them are keyed on the height, so below the
-    // fork this block is exactly as unreachable as it was before it was written.
-    const bool fProofOfStake = block.IsProofOfStake();
-
-    if (fProofOfStake && !IsPoSEnabled(nHeight, consensusParams))
-        return state.DoS(100, false, REJECT_INVALID, "pos-too-early", false, "proof-of-stake block before the fork height");
-
-    if (!fProofOfStake && IsPoWDisabled(nHeight, consensusParams))
-        return state.DoS(100, false, REJECT_INVALID, "pow-ended", false, "proof-of-work block after mining ended");
-
-    if (IsPoSEnabled(nHeight, consensusParams)) {
-        // The header-only path trusts nNonce == 0 to mean "stake". This is where
-        // that claim is settled against the transactions, so a proof-of-work
-        // block cannot borrow the marker to skip the work check, and a stake
-        // cannot hide from the marker by leaving a nonce behind.
-        if (fProofOfStake != (block.nNonce == 0))
-            return state.DoS(100, false, REJECT_INVALID, "bad-pos-marker", false, "nNonce disagrees with the coinstake");
-
-        if (!CheckBlockSignature(block))
-            return state.DoS(100, false, REJECT_INVALID, "bad-blocksig", false, "block signature verification failed");
-    }
-
     bool fDIP0001Active_context = nHeight >= consensusParams.DIP0001Height;
     bool fDIP0003Active_context = nHeight >= consensusParams.DIP0003Height;
 
@@ -3437,6 +3415,28 @@ bool ContextualCheckBlockHeader(const CBlockHeader& block, CValidationState& sta
 bool ContextualCheckBlock(const CBlock& block, CValidationState& state, const Consensus::Params& consensusParams, const CBlockIndex* pindexPrev)
 {
     const int nHeight = pindexPrev == NULL ? 0 : pindexPrev->nHeight + 1;
+
+    // Proof-of-stake rules. All of them are keyed on the height, so below the
+    // fork this block is exactly as unreachable as it was before it was written.
+    const bool fProofOfStake = block.IsProofOfStake();
+
+    if (fProofOfStake && !IsPoSEnabled(nHeight, consensusParams))
+        return state.DoS(100, false, REJECT_INVALID, "pos-too-early", false, "proof-of-stake block before the fork height");
+
+    if (!fProofOfStake && IsPoWDisabled(nHeight, consensusParams))
+        return state.DoS(100, false, REJECT_INVALID, "pow-ended", false, "proof-of-work block after mining ended");
+
+    if (IsPoSEnabled(nHeight, consensusParams)) {
+        // The header-only path trusts nNonce == 0 to mean "stake". This is where
+        // that claim is settled against the transactions, so a proof-of-work
+        // block cannot borrow the marker to skip the work check, and a stake
+        // cannot hide from the marker by leaving a nonce behind.
+        if (fProofOfStake != (block.nNonce == 0))
+            return state.DoS(100, false, REJECT_INVALID, "bad-pos-marker", false, "nNonce disagrees with the coinstake");
+
+        if (!CheckBlockSignature(block))
+            return state.DoS(100, false, REJECT_INVALID, "bad-blocksig", false, "block signature verification failed");
+    }
 
     // Start enforcing BIP113 (Median Time Past) using versionbits logic.
     int nLockTimeFlags = 0;
