@@ -151,6 +151,14 @@ struct Params {
     int DIP0003EnforcementHeight;
     uint256 DIP0003EnforcementHash;
     /**
+     * Block height at which the PoS fork activates: the masternode collateral is
+     * raised and the block reward split changes in favour of masternodes.
+     * Everything BELOW this height keeps the original rules, otherwise the node
+     * would reject its own history and could never sync (see GetMNCollateralAmount
+     * and GetMasternodePayment).
+     */
+    int nPoSForkHeight;
+    /**
      * Minimum blocks including miner confirmation of the total of nMinerConfirmationWindow blocks in a retargeting period,
      * (nPowTargetTimespan / nPowTargetSpacing) which is also used for BIP9 deployments.
      * Default BIP9Deployment::nThreshold value for deployments where it's not specified and for unknown deployments.

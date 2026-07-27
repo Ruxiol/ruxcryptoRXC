@@ -1161,9 +1161,28 @@ CAmount GetBlockSubsidy(int nPrevBits, int nPrevHeight, const Consensus::Params&
 
 CAmount GetMasternodePayment(int nHeight, CAmount blockValue)
 {
+    // From the PoS fork on, masternodes take a larger share: they carry the
+    // network (24/7 nodes, quorum services) while stakers only hold coins.
+    // Blocks below the fork height MUST keep the original 50/50 split or the
+    // node would reject its own history.
+    if (nHeight >= Params().GetConsensus().nPoSForkHeight) {
+        return blockValue * 0.7;
+    }
+
     CAmount ret = blockValue * 0.5;
 
     return ret;
+}
+
+CAmount GetMNCollateralAmount(int nHeight)
+{
+    // Same rule as above: the raised collateral only applies to registrations
+    // made at or after the fork height. Historical ProRegTx used 1000 and must
+    // continue to validate.
+    if (nHeight >= Params().GetConsensus().nPoSForkHeight) {
+        return 10000 * COIN;
+    }
+    return 1000 * COIN;
 }
 
 bool IsInitialBlockDownload()

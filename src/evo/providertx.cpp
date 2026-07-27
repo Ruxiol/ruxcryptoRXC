@@ -135,9 +135,15 @@ bool CheckProRegTx(const CTransaction& tx, const CBlockIndex* pindexPrev, CValid
     CKeyID keyForPayloadSig;
     COutPoint collateralOutpoint;
 
+    // Collateral size depends on the height this registration is made at — the
+    // PoS fork raises it. Older registrations keep validating against the old
+    // amount (see GetMNCollateralAmount).
+    const int nRegHeight = pindexPrev ? pindexPrev->nHeight + 1 : chainActive.Height() + 1;
+    const CAmount nCollateral = GetMNCollateralAmount(nRegHeight);
+
     if (!ptx.collateralOutpoint.hash.IsNull()) {
         Coin coin;
-        if (!GetUTXOCoin(ptx.collateralOutpoint, coin) || coin.out.nValue != 1000 * COIN) {
+        if (!GetUTXOCoin(ptx.collateralOutpoint, coin) || coin.out.nValue != nCollateral) {
             return state.DoS(10, false, REJECT_INVALID, "bad-protx-collateral");
         }
 
@@ -156,7 +162,7 @@ bool CheckProRegTx(const CTransaction& tx, const CBlockIndex* pindexPrev, CValid
         if (ptx.collateralOutpoint.n >= tx.vout.size()) {
             return state.DoS(10, false, REJECT_INVALID, "bad-protx-collateral-index");
         }
-        if (tx.vout[ptx.collateralOutpoint.n].nValue != 1000 * COIN) {
+        if (tx.vout[ptx.collateralOutpoint.n].nValue != nCollateral) {
             return state.DoS(10, false, REJECT_INVALID, "bad-protx-collateral");
         }
 

@@ -222,6 +222,7 @@ public:
         consensus.DIP0001Height = 2;
         consensus.DIP0003Height = 2;
         consensus.DIP0003EnforcementHeight = 2;
+        consensus.nPoSForkHeight = 999999; // mainnet: PLACEHOLDER, dogovoriti stvarnu visinu prije objave
         consensus.DIP0003EnforcementHash = uint256();
         consensus.powLimit = uint256S("00000fffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"); // ~uint256(0) >> 20
         consensus.nPowTargetTimespan = 10 * 60;
@@ -398,6 +399,7 @@ public:
         consensus.DIP0001Height = 2;
         consensus.DIP0003Height = 2;
         consensus.DIP0003EnforcementHeight = 2;
+        consensus.nPoSForkHeight = 999999; // testnet
         consensus.DIP0003EnforcementHash = uint256();
         consensus.powLimit = uint256S("00000fffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"); // ~uint256(0) >> 20
         consensus.nPowTargetTimespan = 10 * 60;
@@ -571,6 +573,7 @@ public:
         consensus.DIP0001Height = 2; // DIP0001 activated immediately on devnet
         consensus.DIP0003Height = 2; // DIP0003 activated immediately on devnet
         consensus.DIP0003EnforcementHeight = 2; // DIP0003 activated immediately on devnet
+        consensus.nPoSForkHeight = 999999; // devnet
         consensus.DIP0003EnforcementHash = uint256();
         consensus.powLimit = uint256S("7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"); // ~uint256(0) >> 1
         consensus.nPowTargetTimespan = 10 * 60;
@@ -758,6 +761,7 @@ public:
         consensus.DIP0001Height = 2000;
         consensus.DIP0003Height = 432;
         consensus.DIP0003EnforcementHeight = 500;
+        consensus.nPoSForkHeight = 999999; // regtest
         consensus.DIP0003EnforcementHash = uint256();
         consensus.powLimit = uint256S("7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"); // ~uint256(0) >> 1
         consensus.nPowTargetTimespan = 10 * 60;

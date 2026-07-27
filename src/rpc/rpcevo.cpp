@@ -412,7 +412,9 @@ UniValue protx_register(const JSONRPCRequest& request)
 
     size_t paramIdx = 1;
 
-    CAmount collateralAmount = 1000 * COIN;
+    // Build the registration against the rules that will apply to the block it
+    // lands in, so `protx register` keeps working across the PoS fork.
+    CAmount collateralAmount = GetMNCollateralAmount(chainActive.Height() + 1);
 
     CMutableTransaction tx;
     tx.nVersion = 3;
