@@ -10,6 +10,7 @@
 #include "net.h"
 #include "utilstrencodings.h"
 #include "key.h"
+#include "consensus/params.h"
 
 #include <unordered_map>
 #include <unordered_set>
@@ -32,9 +33,10 @@ static const int SPORK_16_INSTANTSEND_AUTOLOCKS                         = 10015;
 static const int SPORK_17_QUORUM_DKG_ENABLED                            = 10016;
 static const int SPORK_19_CHAINLOCKS_ENABLED                            = 10018;
 static const int SPORK_20_INSTANTSEND_LLMQ_BASED                        = 10019;
+static const int SPORK_21_QUORUM_TIER                                   = 10020;
 
 static const int SPORK_START                                            = SPORK_2_INSTANTSEND_ENABLED;
-static const int SPORK_END                                              = SPORK_20_INSTANTSEND_LLMQ_BASED;
+static const int SPORK_END                                              = SPORK_21_QUORUM_TIER;
 
 extern std::map<int, int64_t> mapSporkDefaults;
 extern CSporkManager sporkManager;
@@ -287,5 +289,32 @@ public:
      */
     std::string ToString() const;
 };
+
+/**
+ * Which quorum size is currently in force for ChainLocks and InstantSend.
+ *
+ * A quorum cannot form until minSize of its members are online and answer during
+ * the key exchange, so the right size depends on how many masternodes actually
+ * exist -- a number that changes over months, and cannot be guessed years ahead
+ * in a chainparams constant. All the candidate sizes are registered as consensus
+ * types, and this picks between them at runtime from SPORK_21_QUORUM_TIER.
+ *
+ * The choice is not a consensus rule. A quorum commitment is validated against
+ * the parameters of the type named INSIDE the commitment, so every node agrees
+ * on every commitment regardless of this setting; what moves is only which
+ * signature counts as a ChainLock.
+ *
+ * The spork can only raise the tier, never lower it below the floor compiled in
+ * for the network. That asymmetry is the whole point. A spork key that could
+ * shrink the quorum could forge finality -- drop to a five-member quorum,
+ * control three of them, and sign whatever you like, permanently, because a
+ * ChainLock cannot be reorganised away. With the floor, the worst a stolen key
+ * can do is demand a quorum larger than the network can fill, which stops
+ * ChainLocks until the next spork or release. Liveness is recoverable. Finality
+ * is not, so it is the one traded away.
+ *
+ * @param floorType the type from chainparams, used as the lower bound
+ */
+Consensus::LLMQType GetActiveQuorumType(Consensus::LLMQType floorType);
 
 #endif

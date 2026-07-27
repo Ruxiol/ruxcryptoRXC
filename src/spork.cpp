@@ -30,7 +30,44 @@ std::map<int, int64_t> mapSporkDefaults = {
     {SPORK_17_QUORUM_DKG_ENABLED,            4070908800ULL}, // OFF
     {SPORK_19_CHAINLOCKS_ENABLED,            4070908800ULL}, // OFF
     {SPORK_20_INSTANTSEND_LLMQ_BASED,        4070908800ULL}, // OFF
+    {SPORK_21_QUORUM_TIER,                   0},             // tier 0 = smallest quorum
 };
+
+Consensus::LLMQType GetActiveQuorumType(Consensus::LLMQType floorType)
+{
+    // Smallest first. Raising the spork walks right along this list.
+    static const Consensus::LLMQType tiers[] = {
+        Consensus::LLMQ_5_60,
+        Consensus::LLMQ_15_60,
+        Consensus::LLMQ_30_60,
+        Consensus::LLMQ_50_60,
+    };
+    static const size_t nTiers = sizeof(tiers) / sizeof(tiers[0]);
+
+    // A network whose floor is not one of these tiers (devnet, or a future
+    // chainparams change) is not up for negotiation: the spork has no say.
+    size_t nFloor = nTiers;
+    for (size_t i = 0; i < nTiers; i++) {
+        if (tiers[i] == floorType) {
+            nFloor = i;
+            break;
+        }
+    }
+    if (nFloor == nTiers)
+        return floorType;
+
+    const int64_t nValue = sporkManager.GetSporkValue(SPORK_21_QUORUM_TIER);
+
+    // Out of range counts as the floor rather than as an error. A spork carrying
+    // a value this build does not understand -- an older node meeting a newer
+    // setting -- should fall back to what it was compiled to trust, not to the
+    // smallest quorum it happens to know.
+    size_t nTier = nFloor;
+    if (nValue >= 0 && nValue < (int64_t)nTiers && (size_t)nValue > nFloor)
+        nTier = (size_t)nValue;
+
+    return tiers[nTier];
+}
 
 bool CSporkManager::SporkValueIsActive(int nSporkID, int64_t &nActiveValueRet) const
 {

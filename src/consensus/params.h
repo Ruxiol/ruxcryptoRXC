@@ -48,7 +48,15 @@ enum LLMQType : uint8_t
     LLMQ_400_60 = 2, // 400 members, 240 (60%) threshold, one every 12 hours
     LLMQ_400_85 = 3, // 400 members, 340 (85%) threshold, one every 24 hours
 
-    // for testing only
+    // Smaller quorums, for a chain that does not have hundreds of masternodes.
+    // A quorum cannot form at all until minSize of its members are online and
+    // answer during the key exchange, so a size the network cannot fill means no
+    // ChainLocks and no InstantSend -- which is the state this chain has been in.
+    // Which of these is actually in use is chosen at runtime and can be raised as
+    // the network grows; see GetActiveQuorumType().
+    LLMQ_15_60 = 4, // 15 members, 9 (60%) threshold
+    LLMQ_30_60 = 5, // 30 members, 18 (60%) threshold
+
     LLMQ_5_60 = 100, // 5 members, 3 (60%) threshold, one per hour
 };
 

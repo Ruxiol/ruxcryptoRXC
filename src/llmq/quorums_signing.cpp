@@ -3,6 +3,7 @@
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
 #include "quorums_signing.h"
+#include "spork.h"
 #include "quorums_utils.h"
 #include "quorums_signing_shares.h"
 
@@ -850,7 +851,7 @@ CQuorumCPtr CSigningManager::SelectQuorumForSigning(Consensus::LLMQType llmqType
 
 bool CSigningManager::VerifyRecoveredSig(Consensus::LLMQType llmqType, int signedAtHeight, const uint256& id, const uint256& msgHash, const CBLSSignature& sig)
 {
-    auto& llmqParams = Params().GetConsensus().llmqs.at(Params().GetConsensus().llmqChainLocks);
+    auto& llmqParams = Params().GetConsensus().llmqs.at(GetActiveQuorumType(Params().GetConsensus().llmqChainLocks));
 
     auto quorum = SelectQuorumForSigning(llmqParams.type, signedAtHeight, id);
     if (!quorum) {

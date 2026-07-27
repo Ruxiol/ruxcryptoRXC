@@ -365,7 +365,7 @@ bool CInstantSendManager::ProcessTx(const CTransaction& tx, const Consensus::Par
         return true;
     }
 
-    auto llmqType = params.llmqForInstantSend;
+    auto llmqType = GetActiveQuorumType(params.llmqForInstantSend);
     if (llmqType == Consensus::LLMQ_NONE) {
         return true;
     }
@@ -538,7 +538,7 @@ void CInstantSendManager::HandleNewRecoveredSig(const CRecoveredSig& recoveredSi
         return;
     }
 
-    auto llmqType = Params().GetConsensus().llmqForInstantSend;
+    auto llmqType = GetActiveQuorumType(Params().GetConsensus().llmqForInstantSend);
     if (llmqType == Consensus::LLMQ_NONE) {
         return;
     }
@@ -564,7 +564,7 @@ void CInstantSendManager::HandleNewRecoveredSig(const CRecoveredSig& recoveredSi
 
 void CInstantSendManager::HandleNewInputLockRecoveredSig(const CRecoveredSig& recoveredSig, const uint256& txid)
 {
-    auto llmqType = Params().GetConsensus().llmqForInstantSend;
+    auto llmqType = GetActiveQuorumType(Params().GetConsensus().llmqForInstantSend);
 
     CTransactionRef tx;
     uint256 hashBlock;
@@ -588,7 +588,7 @@ void CInstantSendManager::HandleNewInputLockRecoveredSig(const CRecoveredSig& re
 
 void CInstantSendManager::TrySignInstantSendLock(const CTransaction& tx)
 {
-    auto llmqType = Params().GetConsensus().llmqForInstantSend;
+    auto llmqType = GetActiveQuorumType(Params().GetConsensus().llmqForInstantSend);
 
     for (auto& in : tx.vin) {
         auto id = ::SerializeHash(std::make_pair(INPUTLOCK_REQUESTID_PREFIX, in.prevout));
@@ -712,7 +712,7 @@ bool CInstantSendManager::PreVerifyInstantSendLock(NodeId nodeId, const llmq::CI
 
 bool CInstantSendManager::ProcessPendingInstantSendLocks()
 {
-    auto llmqType = Params().GetConsensus().llmqForInstantSend;
+    auto llmqType = GetActiveQuorumType(Params().GetConsensus().llmqForInstantSend);
 
     decltype(pendingInstantSendLocks) pend;
 

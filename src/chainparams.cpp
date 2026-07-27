@@ -144,6 +144,50 @@ static Consensus::LLMQParams llmq50_60 = {
         .keepOldConnections = 25,
 };
 
+// Small quorums, sized for a network that has a handful of masternodes rather
+// than hundreds. Which of them is actually used is decided at runtime by
+// GetActiveQuorumType() and can be raised as the network grows.
+//
+// dkgBadVotesThreshold is kept just under minSize: it is the number of complaints
+// needed to throw a member out, and setting it above minSize would make removal
+// impossible while setting it too low would let a couple of nodes evict an honest
+// one.
+static Consensus::LLMQParams llmq15_60 = {
+        .type = Consensus::LLMQ_15_60,
+        .name = "llmq_15_60",
+        .size = 15,
+        .minSize = 10,
+        .threshold = 9,
+
+        .dkgInterval = 24,
+        .dkgPhaseBlocks = 2,
+        .dkgMiningWindowStart = 10, // dkgPhaseBlocks * 5 = after finalization
+        .dkgMiningWindowEnd = 18,
+        .dkgBadVotesThreshold = 9,
+
+        .signingActiveQuorumCount = 24,
+
+        .keepOldConnections = 16,
+};
+
+static Consensus::LLMQParams llmq30_60 = {
+        .type = Consensus::LLMQ_30_60,
+        .name = "llmq_30_60",
+        .size = 30,
+        .minSize = 20,
+        .threshold = 18,
+
+        .dkgInterval = 24,
+        .dkgPhaseBlocks = 2,
+        .dkgMiningWindowStart = 10, // dkgPhaseBlocks * 5 = after finalization
+        .dkgMiningWindowEnd = 18,
+        .dkgBadVotesThreshold = 19,
+
+        .signingActiveQuorumCount = 24,
+
+        .keepOldConnections = 31,
+};
+
 static Consensus::LLMQParams llmq400_60 = {
         .type = Consensus::LLMQ_400_60,
         .name = "llmq_400_60",
@@ -337,11 +381,15 @@ public:
         vFixedSeeds = std::vector<SeedSpec6>(pnSeed6_main, pnSeed6_main + ARRAYLEN(pnSeed6_main));
 
         // long living quorum params
+        consensus.llmqs[Consensus::LLMQ_5_60] = llmq5_60;
+        consensus.llmqs[Consensus::LLMQ_15_60] = llmq15_60;
+        consensus.llmqs[Consensus::LLMQ_30_60] = llmq30_60;
         consensus.llmqs[Consensus::LLMQ_50_60] = llmq50_60;
         consensus.llmqs[Consensus::LLMQ_400_60] = llmq400_60;
         consensus.llmqs[Consensus::LLMQ_400_85] = llmq400_85;
-        consensus.llmqChainLocks = Consensus::LLMQ_400_60;
-        consensus.llmqForInstantSend = Consensus::LLMQ_50_60;
+        consensus.llmqChainLocks = Consensus::LLMQ_5_60;   // pod; spork moze samo dizati
+        // (ranije LLMQ_400_60: trazio je 300 zivih masternoda, pa se kvorum nikad nije formirao)
+        consensus.llmqForInstantSend = Consensus::LLMQ_5_60;
 
         fMiningRequiresPeers = true;
         fDefaultConsistencyChecks = false;
@@ -517,6 +565,9 @@ public:
         nExtCoinType = 1;
 
         // long living quorum params
+        consensus.llmqs[Consensus::LLMQ_5_60] = llmq5_60;
+        consensus.llmqs[Consensus::LLMQ_15_60] = llmq15_60;
+        consensus.llmqs[Consensus::LLMQ_30_60] = llmq30_60;
         consensus.llmqs[Consensus::LLMQ_50_60] = llmq50_60;
         consensus.llmqs[Consensus::LLMQ_400_60] = llmq400_60;
         consensus.llmqs[Consensus::LLMQ_400_85] = llmq400_85;
@@ -699,6 +750,9 @@ public:
         nExtCoinType = 1;
 
         // long living quorum params
+        consensus.llmqs[Consensus::LLMQ_5_60] = llmq5_60;
+        consensus.llmqs[Consensus::LLMQ_15_60] = llmq15_60;
+        consensus.llmqs[Consensus::LLMQ_30_60] = llmq30_60;
         consensus.llmqs[Consensus::LLMQ_50_60] = llmq50_60;
         consensus.llmqs[Consensus::LLMQ_400_60] = llmq400_60;
         consensus.llmqs[Consensus::LLMQ_400_85] = llmq400_85;
@@ -900,6 +954,8 @@ public:
 
         // long living quorum params
         consensus.llmqs[Consensus::LLMQ_5_60] = llmq5_60;
+        consensus.llmqs[Consensus::LLMQ_15_60] = llmq15_60;
+        consensus.llmqs[Consensus::LLMQ_30_60] = llmq30_60;
         consensus.llmqs[Consensus::LLMQ_50_60] = llmq50_60;
         consensus.llmqChainLocks = Consensus::LLMQ_5_60;
         consensus.llmqForInstantSend = Consensus::LLMQ_5_60;
