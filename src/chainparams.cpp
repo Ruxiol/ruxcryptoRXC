@@ -224,6 +224,9 @@ public:
         consensus.DIP0003EnforcementHeight = 2;
         consensus.nPoSForkHeight = 350000;   // PoS aktivan (hibrid) + reset MN liste + kolateral 10k + podjela 70/30
         consensus.nPoWDisableHeight = 375000; // kraj hibrida: od ove visine samo PoS blokovi
+        consensus.nStakeMinAmount = 10000 * COIN;  // isto kao MN kolateral
+        consensus.nStakeMinConfirmations = 100;    // ~8h na 5-minutnim blokovima
+        consensus.nStakeTimestampMask = 15;        // stake vrijeme na 16 sekundi
         consensus.DIP0003EnforcementHash = uint256();
         consensus.powLimit = uint256S("00000fffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"); // ~uint256(0) >> 20
         consensus.nPowTargetTimespan = 10 * 60;
@@ -402,6 +405,9 @@ public:
         consensus.DIP0003EnforcementHeight = 2;
         consensus.nPoSForkHeight = 999999;   // testnet: postaviti pri testiranju forka
         consensus.nPoWDisableHeight = 999999; // testnet
+        consensus.nStakeMinAmount = 10000 * COIN;
+        consensus.nStakeMinConfirmations = 100;
+        consensus.nStakeTimestampMask = 15;
         consensus.DIP0003EnforcementHash = uint256();
         consensus.powLimit = uint256S("00000fffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"); // ~uint256(0) >> 20
         consensus.nPowTargetTimespan = 10 * 60;
@@ -577,6 +583,9 @@ public:
         consensus.DIP0003EnforcementHeight = 2; // DIP0003 activated immediately on devnet
         consensus.nPoSForkHeight = 999999;   // devnet
         consensus.nPoWDisableHeight = 999999; // devnet
+        consensus.nStakeMinAmount = 10000 * COIN;
+        consensus.nStakeMinConfirmations = 100;
+        consensus.nStakeTimestampMask = 15;
         consensus.DIP0003EnforcementHash = uint256();
         consensus.powLimit = uint256S("7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"); // ~uint256(0) >> 1
         consensus.nPowTargetTimespan = 10 * 60;
@@ -766,6 +775,9 @@ public:
         consensus.DIP0003EnforcementHeight = 500;
         consensus.nPoSForkHeight = 200;   // regtest: namjerno nisko da se fork moze testirati
         consensus.nPoWDisableHeight = 300; // regtest
+        consensus.nStakeMinAmount = 100 * COIN;    // regtest: sitno, da testovi budu jeftini
+        consensus.nStakeMinConfirmations = 1;      // regtest: bez cekanja
+        consensus.nStakeTimestampMask = 15;
         consensus.DIP0003EnforcementHash = uint256();
         consensus.powLimit = uint256S("7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"); // ~uint256(0) >> 1
         consensus.nPowTargetTimespan = 10 * 60;

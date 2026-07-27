@@ -4,6 +4,10 @@
 
 #include "pos.h"
 
+#include "arith_uint256.h"
+#include "chain.h"
+#include "chainparams.h"
+#include "hash.h"
 #include "primitives/block.h"
 #include "primitives/transaction.h"
 #include "pubkey.h"
@@ -14,6 +18,11 @@ bool IsPoSEnabled(int nHeight, const Consensus::Params& params)
     // A height of 0 would mean "always on", which is never what we want on a
     // chain that has PoW history, so treat only a positive value as configured.
     return params.nPoSForkHeight > 0 && nHeight >= params.nPoSForkHeight;
+}
+
+bool IsPoSEnabled(int nHeight)
+{
+    return IsPoSEnabled(nHeight, Params().GetConsensus());
 }
 
 bool IsPoWDisabled(int nHeight, const Consensus::Params& params)
@@ -84,4 +93,61 @@ bool CheckBlockSignature(const CBlock& block)
     // staking output to these two plain forms is what lets the check above stay
     // this simple, and there is no demand for the rest.
     return false;
+}
+
+uint256 ComputeStakeModifier(const CBlockIndex* pindexPrev, const uint256& kernel)
+{
+    if (!pindexPrev)
+        return uint256();  // genesis has nothing behind it to mix in
+
+    CHashWriter ss(SER_GETHASH, 0);
+    ss << kernel << pindexPrev->nStakeModifier;
+    return ss.GetHash();
+}
+
+uint256 StakeModifierKernelFor(const CBlock& block)
+{
+    // A PoS block contributes the coin it spent: chosen by the staker, but only
+    // once, and public from that point on. A PoW block contributes its own hash,
+    // which the miner had to burn work to move. Either way the next modifier
+    // depends on something that could not be known before this block existed.
+    if (block.IsProofOfStake())
+        return block.vtx[1]->vin[0].prevout.hash;
+
+    return block.GetHash();
+}
+
+bool CheckStakeKernelHash(unsigned int nBits,
+                          const uint256& nStakeModifier,
+                          const COutPoint& prevout,
+                          CAmount nValueIn,
+                          unsigned int nTimeTx,
+                          const Consensus::Params& params,
+                          uint256& hashProofOfStake)
+{
+    if (nValueIn < params.nStakeMinAmount)
+        return false;
+
+    // Time is the staker's only free variable, so it is pinned to a grid.
+    if ((nTimeTx & params.nStakeTimestampMask) != 0)
+        return false;
+
+    CHashWriter ss(SER_GETHASH, 0);
+    ss << nStakeModifier << prevout.hash << prevout.n << nTimeTx;
+    hashProofOfStake = ss.GetHash();
+
+    arith_uint256 bnTarget;
+    bool fNegative, fOverflow;
+    bnTarget.SetCompact(nBits, &fNegative, &fOverflow);
+    if (fNegative || fOverflow || bnTarget == 0)
+        return false;
+
+    // Weight in whole coins, never zero: nStakeMinAmount already guarantees at
+    // least one, but the guard costs nothing and a division by zero would be
+    // a consensus fault rather than a crash on one node.
+    arith_uint256 bnWeight = arith_uint256(nValueIn / COIN);
+    if (bnWeight == 0)
+        return false;
+
+    return (UintToArith256(hashProofOfStake) / bnWeight) <= bnTarget;
 }

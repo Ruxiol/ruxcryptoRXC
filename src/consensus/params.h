@@ -164,6 +164,28 @@ struct Params {
      */
     int nPoWDisableHeight;
     /**
+     * Smallest output, in satoshis, that is allowed to stake. Deliberately equal
+     * to the masternode collateral: one wallet, one decision, no third tier.
+     */
+    int64_t nStakeMinAmount;
+    /**
+     * How many confirmations an output needs before it may stake. Its job is to
+     * stop a coin from immediately re-staking the reward it just won, which
+     * would otherwise let one holder chain wins together.
+     */
+    int nStakeMinConfirmations;
+    /**
+     * Granularity mask for a coinstake's timestamp: nTime & mask must be zero,
+     * so stake timestamps land on 16-second boundaries.
+     *
+     * The kernel has no nonce -- the only input a staker controls is time. Left
+     * free, a wallet could try a new kernel every second; this cuts that search
+     * space by a factor of 16 and, more importantly, makes what remains cheap to
+     * verify. It is not a defence on its own, it is what keeps the modifier's
+     * job small.
+     */
+    int nStakeTimestampMask;
+    /**
      * Minimum blocks including miner confirmation of the total of nMinerConfirmationWindow blocks in a retargeting period,
      * (nPowTargetTimespan / nPowTargetSpacing) which is also used for BIP9 deployments.
      * Default BIP9Deployment::nThreshold value for deployments where it's not specified and for unknown deployments.

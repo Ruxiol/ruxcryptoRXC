@@ -5,9 +5,13 @@
 #ifndef RUXCRYPTO_POS_H
 #define RUXCRYPTO_POS_H
 
+#include "amount.h"
 #include "consensus/params.h"
+#include "uint256.h"
 
 class CBlock;
+class CBlockIndex;
+class COutPoint;
 
 /**
  * Proof-of-Stake transition.
@@ -26,6 +30,10 @@ class CBlock;
 
 /** True once staking is allowed, i.e. inside the hybrid window or past it. */
 bool IsPoSEnabled(int nHeight, const Consensus::Params& params);
+
+/** Same, against the active chain's parameters. For callers like the block index
+ *  serializer that have a height but no params in hand. */
+bool IsPoSEnabled(int nHeight);
 
 /** True once proof-of-work blocks must be rejected. */
 bool IsPoWDisabled(int nHeight, const Consensus::Params& params);
@@ -54,5 +62,49 @@ bool BlockIsProofOfStake(const CBlock& block);
  * non-empty one could only have been built in memory, never parsed off the wire.
  */
 bool CheckBlockSignature(const CBlock& block);
+
+/**
+ * The stake modifier: the one input to the kernel a staker cannot choose.
+ *
+ * A proof-of-work miner grinds nNonce until the hash comes out small. A staker
+ * has no nonce -- the coins are fixed, the outpoint is fixed, and the only knob
+ * left is time. So without further mixing, a staker holding a given coin could
+ * sit down today and compute every block they will be entitled to for months
+ * ahead, then arrange their transactions around it.
+ *
+ * The modifier closes that off. Each block folds something it cannot know in
+ * advance into the previous block's modifier, so the chain of modifiers only
+ * becomes determined as the chain itself is built. Grinding future kernels means
+ * first predicting every block in between.
+ *
+ * @param pindexPrev  previous block, or nullptr at genesis
+ * @param kernel      the per-block entropy: for a PoS block the outpoint hash of
+ *                    the coin being staked, for a PoW block the block hash
+ */
+uint256 ComputeStakeModifier(const CBlockIndex* pindexPrev, const uint256& kernel);
+
+/** The entropy ComputeStakeModifier() should be given for this block. */
+uint256 StakeModifierKernelFor(const CBlock& block);
+
+/**
+ * The kernel check -- the proof-of-stake analogue of "does the hash meet nBits".
+ *
+ *     hash(modifier, prevout, nTime) / weight  <=  target
+ *
+ * Weight is the staked amount in whole coins, so ten times the stake means ten
+ * times the chance, exactly as ten times the hashrate would. Note the division:
+ * the textbook form is hash <= target * weight, but with a large stake that
+ * product can run past 256 bits and silently wrap, handing an attacker a target
+ * of nearly zero difficulty. Dividing the hash instead cannot overflow.
+ *
+ * @param hashProofOfStake  out: the kernel hash, recorded in the block index
+ */
+bool CheckStakeKernelHash(unsigned int nBits,
+                          const uint256& nStakeModifier,
+                          const COutPoint& prevout,
+                          CAmount nValueIn,
+                          unsigned int nTimeTx,
+                          const Consensus::Params& params,
+                          uint256& hashProofOfStake);
 
 #endif // RUXCRYPTO_POS_H

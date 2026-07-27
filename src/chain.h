@@ -7,6 +7,7 @@
 #define BITCOIN_CHAIN_H
 
 #include "arith_uint256.h"
+#include "pos.h"
 #include "primitives/block.h"
 #include "pow.h"
 #include "tinyformat.h"
@@ -213,6 +214,10 @@ public:
     unsigned int nBits;
     unsigned int nNonce;
 
+    //! Stake modifier carried by this block. Zero below the PoS fork height, and
+    //! only then written to disk -- see CDiskBlockIndex::SerializationOp.
+    uint256 nStakeModifier;
+
     //! (memory only) Sequential id assigned to distinguish order in which blocks are received.
     int32_t nSequenceId;
 
@@ -240,6 +245,7 @@ public:
         nTime          = 0;
         nBits          = 0;
         nNonce         = 0;
+        nStakeModifier = uint256();
     }
 
     CBlockIndex()
@@ -407,6 +413,14 @@ public:
         READWRITE(nTime);
         READWRITE(nBits);
         READWRITE(nNonce);
+
+        // The stake modifier exists only from the PoS fork on, and the decision
+        // is made from nHeight, read a dozen lines above. That matters: every
+        // record already on disk is below the fork, so it still parses to the
+        // exact same bytes, and a node upgrading to this build keeps its block
+        // index instead of being forced into a full reindex.
+        if (IsPoSEnabled(nHeight))
+            READWRITE(nStakeModifier);
     }
 
     uint256 GetBlockHash() const
