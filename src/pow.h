@@ -14,6 +14,16 @@ class CBlockHeader;
 class CBlockIndex;
 class uint256;
 
+/**
+ * Target seconds between blocks at a given height.
+ *
+ * The spacing changes at the fork, so it cannot simply be read out of the
+ * parameters: the difficulty algorithm recomputes nBits for historical blocks
+ * too, and feeding it the new spacing everywhere would make the node reject the
+ * chain it already has.
+ */
+int64_t GetTargetSpacing(int nHeight, const Consensus::Params& params);
+
 unsigned int GetNextWorkRequired(const CBlockIndex* pindexLast, const CBlockHeader *pblock, const Consensus::Params&);
 unsigned int CalculateNextWorkRequired(const CBlockIndex* pindexLast, int64_t nFirstBlockTime, const Consensus::Params&);
 

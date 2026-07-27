@@ -186,6 +186,16 @@ struct Params {
      */
     int nStakeTimestampMask;
     /**
+     * Target seconds between blocks from nPoSForkHeight on, replacing
+     * nPowTargetSpacing. Blocks below the fork MUST keep the original spacing:
+     * the difficulty algorithm recomputes nBits for historical blocks from it,
+     * so a node using the new value everywhere would reject its own chain.
+     *
+     * The block reward drops in the same proportion (see GetBlockSubsidy), so
+     * faster blocks mean faster confirmations, not faster emission.
+     */
+    int64_t nPowTargetSpacingPostFork;
+    /**
      * Minimum blocks including miner confirmation of the total of nMinerConfirmationWindow blocks in a retargeting period,
      * (nPowTargetTimespan / nPowTargetSpacing) which is also used for BIP9 deployments.
      * Default BIP9Deployment::nThreshold value for deployments where it's not specified and for unknown deployments.

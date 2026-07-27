@@ -13,6 +13,14 @@
 
 #include <math.h>
 
+int64_t GetTargetSpacing(int nHeight, const Consensus::Params& params)
+{
+    if (nHeight >= params.nPoSForkHeight)
+        return params.nPowTargetSpacingPostFork;
+
+    return params.nPowTargetSpacing;
+}
+
 unsigned int static KimotoGravityWell(const CBlockIndex* pindexLast, const Consensus::Params& params) {
     const CBlockIndex *BlockLastSolved = pindexLast;
     const CBlockIndex *BlockReading = pindexLast;
@@ -89,13 +97,17 @@ unsigned int static DarkGravityWave(const CBlockIndex* pindexLast, const CBlockH
         return bnPowLimit.GetCompact();
     }
 
+    // Spacing is height-dependent from the fork on; below it this is exactly the
+    // old constant, so historical blocks retarget the way they always did.
+    const int64_t nTargetSpacing = GetTargetSpacing(pindexLast->nHeight + 1, params);
+
     if (params.fPowAllowMinDifficultyBlocks) {
         // recent block is more than 2 hours old
         if (pblock->GetBlockTime() > pindexLast->GetBlockTime() + 2 * 60 * 60) {
             return bnPowLimit.GetCompact();
         }
         // recent block is more than 10 minutes old
-        if (pblock->GetBlockTime() > pindexLast->GetBlockTime() + params.nPowTargetSpacing * 4) {
+        if (pblock->GetBlockTime() > pindexLast->GetBlockTime() + nTargetSpacing * 4) {
             arith_uint256 bnNew = arith_uint256().SetCompact(pindexLast->nBits) * 10;
             if (bnNew > bnPowLimit) {
                 bnNew = bnPowLimit;
@@ -126,7 +138,13 @@ unsigned int static DarkGravityWave(const CBlockIndex* pindexLast, const CBlockH
 
     int64_t nActualTimespan = pindexLast->GetBlockTime() - pindex->GetBlockTime();
     // NOTE: is this accurate? nActualTimespan counts it for (nPastBlocks - 1) blocks only...
-    int64_t nTargetTimespan = nPastBlocks * params.nPowTargetSpacing;
+    //
+    // Right at the fork the 24 blocks looked back at were produced under the old,
+    // slower target, so this reads as a chain running behind and difficulty drops
+    // by roughly the ratio of the two spacings. That is the correct response, not
+    // a glitch -- the work per block genuinely has to fall for blocks to arrive
+    // faster -- and it washes out of the window within 24 blocks.
+    int64_t nTargetTimespan = nPastBlocks * nTargetSpacing;
 
     if (nActualTimespan < nTargetTimespan/3)
         nActualTimespan = nTargetTimespan/3;

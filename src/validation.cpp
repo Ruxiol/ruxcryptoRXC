@@ -1140,7 +1140,16 @@ CAmount GetBlockSubsidy(int nPrevBits, int nPrevHeight, const Consensus::Params&
     double dDiff;
     CAmount nSubsidyBase;
 
-    nSubsidyBase = 50;
+    // From the fork on, blocks come every 2 minutes instead of 5, so the reward
+    // is cut in the same 2/5 proportion: 50 -> 20 at the base, which after the
+    // halving already behind us means 25 -> 10 RXC per block. Emission per day is
+    // therefore unchanged -- the point of the faster blocks is confirmation time,
+    // not more coins. The height is the previous block's, so a block AT the fork
+    // height is already on the new schedule.
+    //
+    // As ever, this is gated: recomputing old blocks with the new base would put
+    // the node at odds with its own chain.
+    nSubsidyBase = (nPrevHeight + 1 >= consensusParams.nPoSForkHeight) ? 20 : 50;
 
     CAmount nSubsidy = nSubsidyBase * COIN;
 
