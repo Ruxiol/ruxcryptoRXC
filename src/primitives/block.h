@@ -75,6 +75,9 @@ public:
     // network and disk
     std::vector<CTransactionRef> vtx;
 
+    // network and disk, but proof-of-stake blocks only -- see IsProofOfStake()
+    std::vector<unsigned char> vchBlockSig;
+
     // memory only
     mutable bool fChecked;
 
@@ -89,18 +92,40 @@ public:
         *((CBlockHeader*)this) = header;
     }
 
+    /**
+     * A block is proof-of-stake when its second transaction is a coinstake.
+     *
+     * This is the single definition of that rule. The serialization below and
+     * the consensus code in pos.cpp both go by it, and it must stay in one
+     * place: two copies that ever disagreed would mean two nodes reading the
+     * same bytes into different blocks.
+     */
+    bool IsProofOfStake() const
+    {
+        return vtx.size() > 1 && vtx[1] && vtx[1]->IsCoinStake();
+    }
+
     ADD_SERIALIZE_METHODS;
 
     template <typename Stream, typename Operation>
     inline void SerializationOp(Stream& s, Operation ser_action) {
         READWRITE(*(CBlockHeader*)this);
         READWRITE(vtx);
+        // The block signature exists only on proof-of-stake blocks, and whether
+        // this is one is decided entirely by vtx, which has just been read. So
+        // the format stays self-describing -- which it has to be, because down
+        // here there is no block height to key the decision on. The practical
+        // consequence is that every pre-fork block still serializes to exactly
+        // the same bytes it always did, on disk and on the wire.
+        if (IsProofOfStake())
+            READWRITE(vchBlockSig);
     }
 
     void SetNull()
     {
         CBlockHeader::SetNull();
         vtx.clear();
+        vchBlockSig.clear();
         fChecked = false;
     }
 

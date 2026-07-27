@@ -34,7 +34,25 @@ bool IsPoWDisabled(int nHeight, const Consensus::Params& params);
  * A block is proof-of-stake when its second transaction is a coinstake.
  * (The first stays a coinbase, empty on PoS blocks, so that existing code which
  * assumes vtx[0] is the coinbase keeps working.)
+ *
+ * Thin wrapper over CBlock::IsProofOfStake(), which is where the rule actually
+ * lives -- the serializer in primitives/block.h needs it too, and the two must
+ * never drift apart.
  */
 bool BlockIsProofOfStake(const CBlock& block);
+
+/**
+ * Verify the signature a staker attaches to their block.
+ *
+ * Proof-of-work needs no signature: the work itself is the claim. Proof-of-stake
+ * has nothing equivalent, so the staker signs the block hash with the key that
+ * controls the output being staked, and CBlock::vchBlockSig carries it. Without
+ * this check anyone could take someone else's coinstake and reuse it.
+ *
+ * A proof-of-work block must carry an EMPTY signature. That is not pedantry:
+ * vchBlockSig is only serialized for PoS blocks, so a PoW block arriving with a
+ * non-empty one could only have been built in memory, never parsed off the wire.
+ */
+bool CheckBlockSignature(const CBlock& block);
 
 #endif // RUXCRYPTO_POS_H
