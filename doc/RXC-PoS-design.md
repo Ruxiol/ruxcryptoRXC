@@ -133,18 +133,54 @@ To je najbliži uzor; ne izmišljamo iz nule.
 
 ---
 
-## 6. Otvorena pitanja
+## 6. Spork — POTVRĐENO ✅
 
-1. **Spork ključ** — `SetSporkAddress` (`spork.cpp:334`) se poziva iz `init.cpp`.
-   Treba potvrditi imaš li privatni ključ za mainnet spork adresu. Ako imaš,
-   H2 ide preko sporka (sigurnije). Ako nemaš, mora fiksna visina.
-2. **Visine H i H2** — konkretni brojevi, tek kad znamo datum objave.
-3. **Da li MN-ovi zadržavaju InstantSend/ChainLocks** — ako da, poslije reseta
+Mainnet spork adresa: **`RKmrxcAC9Y1tw9h17Pe7VjHjyfyjicqPLt`** (`chainparams.cpp:351`).
+Privatni ključ je potvrđen testom (regtest daemon s `-sporkaddr` + `-sporkkey`):
+```
+CSporkManager::SetPrivKey -- Successfully initialized as spork signer
+```
+
+Dodatni dokaz da mehanizam radi na mreži — pet sporkova odstupa od fabričkih
+vrijednosti iz `mapSporkDefaults`, znači aktivno su potpisani:
+
+| Spork | Fabrički | Na mreži |
+|---|---|---|
+| SPORK_2_INSTANTSEND | ON | **OFF** |
+| SPORK_6_NEW_SIGS | OFF | **ON** |
+| SPORK_15_DETERMINISTIC_MNS | OFF | **ON** |
+| SPORK_17_QUORUM_DKG | OFF | **ON** |
+| SPORK_19_CHAINLOCKS | OFF | **ON** |
+
+→ **H2 (gašenje PoW-a) ide preko sporka**, ne fiksne visine.
+
+Usput: `SPORK_17_QUORUM_DKG` je **uključen**, tako da DKG nikad nije bio blokada —
+kvorumi ne nastaju isključivo zbog nedostatka živih MN-ova (vidi sekciju 3).
+
+### 6.1 Rotacija spork ključa — zamka
+
+Ako ključ ikad treba zamijeniti (npr. curenje), **ne može se samo prepisati adresa**:
+
+1. Čim se adresa promijeni, svi ranije potpisani sporkovi postaju nevažeći i
+   vrijednosti padaju na fabričke. A fabrički je `SPORK_15_DETERMINISTIC_MNS` **OFF** →
+   DIP3 bi se isključio na lancu gdje je aktivan od bloka 2. Opasno.
+2. Ni "dvije adrese u `vSporkAddresses`" ne pomaže: `SetMinSporkKeys` (`spork.cpp`)
+   traži `minSporkKeys > maxKeys/2`, pa s dvije adrese traži **oba** potpisa (2-of-2),
+   a ne "bilo koji".
+
+Ispravan redoslijed: nova adresa u `chainparams.cpp:351` → rebuild → deploy na **sve**
+nodeove (mreža ima svega par peerova) → **odmah** ponovo potpisati svih 5 aktivnih
+sporkova novim ključem. Najbolje uraditi u sklopu PoS forka, kad svi ionako upgradeuju.
+
+## 7. Otvorena pitanja
+
+1. **Visine H i H2** — konkretni brojevi, tek kad znamo datum objave.
+2. **Da li MN-ovi zadržavaju InstantSend/ChainLocks** — ako da, poslije reseta
    treba i smanjenje kvoruma (5/3) da DKG uopšte prolazi s malim brojem nodeova.
 
 ---
 
-## 7. Ono što treba riješiti PRIJE forka
+## 8. Ono što treba riješiti PRIJE forka
 
 Lanac trenutno **stoji kad ne kopaš** (zadnji blok bio prije ~6h kad je rig bio ugašen).
 Do forka mreži treba neko ko kontinuirano kopa, inače nema ni blokova u kojima bi fork
