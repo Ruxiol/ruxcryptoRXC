@@ -585,6 +585,31 @@ bool CDeterministicMNManager::BuildNewListFromBlock(const CBlock& block, const C
     int nHeight = pindexPrev->nHeight + 1;
 
     CDeterministicMNList oldList = GetListForBlock(pindexPrev->GetBlockHash());
+
+    // The masternode list is emptied once, at the PoS fork height.
+    //
+    // Raising the collateral does not by itself remove anybody: it is checked
+    // when a masternode REGISTERS, so entries already on the list stay there
+    // until their collateral is spent. Without this the list would carry its
+    // 1000-collateral entries -- most of them long dead -- straight across the
+    // fork, and dead entries are not merely untidy. They are counted when a
+    // quorum is formed and then fail to answer during the key exchange, so a
+    // list full of them means no quorum forms at all, which is why ChainLocks
+    // and InstantSend have never worked on this chain.
+    //
+    // So everyone starts again: register with the new 10000 collateral and be
+    // online. Clearing oldList rather than newList is deliberate -- the payee
+    // lookup, the confirmations pass and the PoSe decay below all derive from
+    // it, and they should all see the same empty list instead of each needing
+    // its own exception.
+    if (nHeight == Params().GetConsensus().nPoSForkHeight) {
+        LogPrintf("CDeterministicMNManager::%s -- PoS fork at height %d: clearing %d masternodes\n",
+                  __func__, nHeight, oldList.GetAllMNsCount());
+        oldList = CDeterministicMNList();
+        oldList.SetHeight(pindexPrev->nHeight);
+        oldList.SetBlockHash(pindexPrev->GetBlockHash());
+    }
+
     CDeterministicMNList newList = oldList;
     newList.SetBlockHash(uint256()); // we can't know the final block hash, so better not return a (invalid) block hash
     newList.SetHeight(nHeight);
