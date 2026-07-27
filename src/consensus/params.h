@@ -8,6 +8,7 @@
 
 #include "uint256.h"
 #include <map>
+#include <set>
 #include <string>
 
 namespace Consensus {
@@ -242,6 +243,19 @@ struct Params {
     int nHighSubsidyFactor{1};
 
     std::map<LLMQType, LLMQParams> llmqs;
+    /**
+     * Quorum types that only come into existence at nPoSForkHeight.
+     *
+     * Registering a type is not just cataloguing it. During a mining window every
+     * registered type must have a (possibly null) commitment in the block, so
+     * adding one retroactively means demanding commitments from blocks mined
+     * before it existed -- which is bad-qc-missing, and a chain that stops dead a
+     * few blocks past genesis.
+     *
+     * Membership is per network, because a type new to mainnet may have been
+     * present on regtest all along.
+     */
+    std::set<LLMQType> llmqsFromPoSFork;
     LLMQType llmqChainLocks;
     LLMQType llmqForInstantSend{LLMQ_NONE};
 };

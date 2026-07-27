@@ -384,6 +384,8 @@ public:
         consensus.llmqs[Consensus::LLMQ_5_60] = llmq5_60;
         consensus.llmqs[Consensus::LLMQ_15_60] = llmq15_60;
         consensus.llmqs[Consensus::LLMQ_30_60] = llmq30_60;
+        // Only from the fork on -- see Consensus::Params::llmqsFromPoSFork.
+        consensus.llmqsFromPoSFork = {Consensus::LLMQ_5_60, Consensus::LLMQ_15_60, Consensus::LLMQ_30_60};
         consensus.llmqs[Consensus::LLMQ_50_60] = llmq50_60;
         consensus.llmqs[Consensus::LLMQ_400_60] = llmq400_60;
         consensus.llmqs[Consensus::LLMQ_400_85] = llmq400_85;
@@ -580,6 +582,8 @@ public:
         consensus.llmqs[Consensus::LLMQ_5_60] = llmq5_60;
         consensus.llmqs[Consensus::LLMQ_15_60] = llmq15_60;
         consensus.llmqs[Consensus::LLMQ_30_60] = llmq30_60;
+        // Only from the fork on -- see Consensus::Params::llmqsFromPoSFork.
+        consensus.llmqsFromPoSFork = {Consensus::LLMQ_5_60, Consensus::LLMQ_15_60, Consensus::LLMQ_30_60};
         consensus.llmqs[Consensus::LLMQ_50_60] = llmq50_60;
         consensus.llmqs[Consensus::LLMQ_400_60] = llmq400_60;
         consensus.llmqs[Consensus::LLMQ_400_85] = llmq400_85;
@@ -765,6 +769,8 @@ public:
         consensus.llmqs[Consensus::LLMQ_5_60] = llmq5_60;
         consensus.llmqs[Consensus::LLMQ_15_60] = llmq15_60;
         consensus.llmqs[Consensus::LLMQ_30_60] = llmq30_60;
+        // Only from the fork on -- see Consensus::Params::llmqsFromPoSFork.
+        consensus.llmqsFromPoSFork = {Consensus::LLMQ_5_60, Consensus::LLMQ_15_60, Consensus::LLMQ_30_60};
         consensus.llmqs[Consensus::LLMQ_50_60] = llmq50_60;
         consensus.llmqs[Consensus::LLMQ_400_60] = llmq400_60;
         consensus.llmqs[Consensus::LLMQ_400_85] = llmq400_85;
@@ -968,6 +974,8 @@ public:
         consensus.llmqs[Consensus::LLMQ_5_60] = llmq5_60;
         consensus.llmqs[Consensus::LLMQ_15_60] = llmq15_60;
         consensus.llmqs[Consensus::LLMQ_30_60] = llmq30_60;
+        // Only from the fork on -- see Consensus::Params::llmqsFromPoSFork.
+        consensus.llmqsFromPoSFork = {Consensus::LLMQ_15_60, Consensus::LLMQ_30_60};  // 5_60 je na regtestu oduvijek
         consensus.llmqs[Consensus::LLMQ_50_60] = llmq50_60;
         consensus.llmqChainLocks = Consensus::LLMQ_5_60;
         consensus.llmqForInstantSend = Consensus::LLMQ_5_60;

@@ -95,6 +95,14 @@ bool CheckBlockSignature(const CBlock& block)
     return false;
 }
 
+bool IsQuorumTypeActive(Consensus::LLMQType type, int nHeight, const Consensus::Params& params)
+{
+    if (params.llmqsFromPoSFork.count(type))
+        return IsPoSEnabled(nHeight, params);
+
+    return true;
+}
+
 bool BlockIndexIsProofOfStake(const CBlockIndex* pindex, const Consensus::Params& params)
 {
     return pindex && IsPoSEnabled(pindex->nHeight, params) && pindex->nNonce == 0;

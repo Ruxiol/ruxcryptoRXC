@@ -39,6 +39,18 @@ bool IsPoSEnabled(int nHeight);
 bool IsPoWDisabled(int nHeight, const Consensus::Params& params);
 
 /**
+ * Whether a quorum type exists yet at this height.
+ *
+ * Registering a quorum type is not merely cataloguing it: during a mining window
+ * every registered type must have a (possibly null) commitment in the block. A
+ * type added to the parameters therefore reaches backwards and demands
+ * commitments from blocks mined before anyone had heard of it, which is
+ * bad-qc-missing and a chain that stops a few blocks past genesis. The types
+ * added for the fork are held back until nPoSForkHeight for that reason.
+ */
+bool IsQuorumTypeActive(Consensus::LLMQType type, int nHeight, const Consensus::Params& params);
+
+/**
  * A block is proof-of-stake when its second transaction is a coinstake.
  * (The first stays a coinbase, empty on PoS blocks, so that existing code which
  * assumes vtx[0] is the coinbase keeps working.)

@@ -136,6 +136,12 @@ bool CQuorumBlockProcessor::ProcessBlock(const CBlock& block, const CBlockIndex*
     for (const auto& p : Params().GetConsensus().llmqs) {
         auto type = p.first;
 
+        // A quorum type introduced at the fork does not exist below it, and must
+        // not be demanded of blocks mined before it was invented.
+        if (!IsQuorumTypeActive(type, pindex->nHeight, Params().GetConsensus())) {
+            continue;
+        }
+
         // does the currently processed block contain a (possibly null) commitment for the current session?
         bool hasCommitmentInNewBlock = qcs.count(type) != 0;
         bool isCommitmentRequired = IsCommitmentRequired(type, pindex->nHeight);
