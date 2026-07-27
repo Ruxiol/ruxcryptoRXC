@@ -1936,6 +1936,34 @@ static bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockInd
                                       coin.out.nValue, block.nTime, chainparams.GetConsensus(),
                                       hashProofOfStake))
                 return state.DoS(100, false, REJECT_INVALID, "bad-stake-kernel", false, "stake does not meet target");
+
+            // A coinstake moves coins. It does not create them.
+            //
+            // This is the rule that decides the whole shape of a proof-of-stake
+            // block here, so it is worth being explicit about. Every value check
+            // in this codebase -- IsBlockValueValid, the superblock limits, the
+            // masternode payment checks -- looks at block.vtx[0] and nothing
+            // else. A coinstake carrying the reward would therefore be validated
+            // by nobody, and a staker could mint whatever they liked.
+            //
+            // Rather than teach all of that code about a second paying
+            // transaction, the reward stays where it already is: in the coinbase,
+            // split between staker and masternode by exactly the same code that
+            // pays a miner. The coinstake's only job is to prove the stake, and
+            // it must come out level. One consequence is that proof-of-work and
+            // proof-of-stake blocks share one emission path instead of two --
+            // there is no second place for the subsidy or the 70/30 split to
+            // drift out of agreement with the first.
+            CAmount nStakeIn = 0;
+            for (const CTxIn& txin : block.vtx[1]->vin) {
+                const Coin& in = view.AccessCoin(txin.prevout);
+                if (in.IsSpent())
+                    return state.DoS(100, false, REJECT_INVALID, "bad-stake-missing", false, "coinstake spends a missing output");
+                nStakeIn += in.out.nValue;
+            }
+            if (block.vtx[1]->GetValueOut() != nStakeIn)
+                return state.DoS(100, false, REJECT_INVALID, "bad-stake-amount", false,
+                                 strprintf("coinstake is not value-neutral (in=%d out=%d)", nStakeIn, block.vtx[1]->GetValueOut()));
         }
 
         // Advance the modifier chain. Every block does this, stake or not: the
