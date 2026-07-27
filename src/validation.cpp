@@ -3390,7 +3390,14 @@ bool ContextualCheckBlockHeader(const CBlockHeader& block, CValidationState& sta
             return state.DoS(100, error("%s : incorrect proof of work (DGW pre-fork) - %f %f %f at %d", __func__, abs(n1-n2), n1, n2, nHeight),
                             REJECT_INVALID, "bad-diffbits");
     } else {
-        if (block.nBits != GetNextWorkRequired(pindexPrev, &block, consensusParams))
+        // Work and stake retarget separately, so which target applies depends on
+        // what kind of block this is -- and at header level that is the nNonce
+        // marker again. It is safe to lean on here for the same reason as before:
+        // below the fork it is never read, and above it ContextualCheckBlock will
+        // throw out any block whose marker and coinstake do not agree.
+        const bool fProofOfStake = IsPoSEnabled(nHeight, consensusParams) && block.nNonce == 0;
+
+        if (block.nBits != GetNextWorkRequired(pindexPrev, &block, consensusParams, fProofOfStake))
             return state.DoS(100, false, REJECT_INVALID, "bad-diffbits", false, strprintf("incorrect proof of work at %d", nHeight));
     }
 

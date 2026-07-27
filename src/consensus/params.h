@@ -207,6 +207,17 @@ struct Params {
     BIP9Deployment vDeployments[MAX_VERSION_BITS_DEPLOYMENTS];
     /** Proof of work parameters */
     uint256 powLimit;
+    /**
+     * Easiest allowed target for proof-of-stake blocks, and the one the very
+     * first stake retargets from -- there being no earlier stake to look back at.
+     *
+     * Stake and work cannot share a difficulty. Proof-of-work difficulty tracks
+     * an ASIC doing billions of hashes a second; a staker gets one attempt per
+     * output per timestamp slot. Handing a stake the mining target would mean no
+     * stake is ever found. Each mechanism therefore retargets against the last
+     * blocks of its OWN kind.
+     */
+    uint256 posLimit;
     bool fPowAllowMinDifficultyBlocks;
     bool fPowNoRetargeting;
     int64_t nPowTargetSpacing;

@@ -50,6 +50,16 @@ bool IsPoWDisabled(int nHeight, const Consensus::Params& params);
 bool BlockIsProofOfStake(const CBlock& block);
 
 /**
+ * The same question asked of a block index entry, which has no transactions.
+ *
+ * It leans on the nNonce marker rather than a new field: above the fork,
+ * ContextualCheckBlock refuses any block whose marker and coinstake disagree, so
+ * by the time an entry exists the marker is trustworthy. Below the fork it is
+ * not consulted at all and every block is proof-of-work, which is the truth.
+ */
+bool BlockIndexIsProofOfStake(const CBlockIndex* pindex, const Consensus::Params& params);
+
+/**
  * Verify the signature a staker attaches to their block.
  *
  * Proof-of-work needs no signature: the work itself is the claim. Proof-of-stake

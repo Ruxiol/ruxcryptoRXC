@@ -5,6 +5,8 @@
 
 #include "pow.h"
 
+#include "pos.h"
+
 #include "arith_uint256.h"
 #include "chain.h"
 #include "chainparams.h"
@@ -19,6 +21,38 @@ int64_t GetTargetSpacing(int nHeight, const Consensus::Params& params)
         return params.nPowTargetSpacingPostFork;
 
     return params.nPowTargetSpacing;
+}
+
+/**
+ * Target spacing for ONE mechanism, which is not the same as the chain's.
+ *
+ * Inside the hybrid window work and stake both produce blocks, so each aims at
+ * half the rate and together they land on the chain's target. Aiming both at the
+ * full rate instead would double the block rate for the whole window -- and with
+ * it the emission we just took care to hold steady.
+ *
+ * The trade is visible and deliberate: if mining stops early in the hybrid,
+ * stake alone runs at half speed until nPoWDisableHeight, where the multiplier
+ * drops away and the rate returns. Slower blocks for a while, rather than three
+ * months of doubled issuance.
+ */
+static int64_t GetTypeTargetSpacing(int nHeight, const Consensus::Params& params)
+{
+    const int64_t nSpacing = GetTargetSpacing(nHeight, params);
+
+    if (IsPoSEnabled(nHeight, params) && !IsPoWDisabled(nHeight, params))
+        return nSpacing * 2;
+
+    return nSpacing;
+}
+
+/** Walk back to the nearest block of the requested kind, or null if none. */
+static const CBlockIndex* GetLastBlockOfType(const CBlockIndex* pindex, bool fProofOfStake, const Consensus::Params& params)
+{
+    while (pindex && pindex->nHeight > 0 && BlockIndexIsProofOfStake(pindex, params) != fProofOfStake)
+        pindex = pindex->pprev;
+
+    return (pindex && pindex->nHeight > 0) ? pindex : NULL;
 }
 
 unsigned int static KimotoGravityWell(const CBlockIndex* pindexLast, const Consensus::Params& params) {
@@ -87,9 +121,9 @@ unsigned int static KimotoGravityWell(const CBlockIndex* pindexLast, const Conse
     return bnNew.GetCompact();
 }
 
-unsigned int static DarkGravityWave(const CBlockIndex* pindexLast, const CBlockHeader *pblock, const Consensus::Params& params) {
+unsigned int static DarkGravityWave(const CBlockIndex* pindexLast, const CBlockHeader *pblock, const Consensus::Params& params, bool fProofOfStake) {
     /* current difficulty formula, ruxcrypto - DarkGravity v3, written by Evan Duffield - evan@ruxcrypto.org */
-    const arith_uint256 bnPowLimit = UintToArith256(params.powLimit);
+    const arith_uint256 bnPowLimit = UintToArith256(fProofOfStake ? params.posLimit : params.powLimit);
     int64_t nPastBlocks = 24;
 
     // make sure we have at least (nPastBlocks + 1) blocks, otherwise just return powLimit
@@ -99,7 +133,15 @@ unsigned int static DarkGravityWave(const CBlockIndex* pindexLast, const CBlockH
 
     // Spacing is height-dependent from the fork on; below it this is exactly the
     // old constant, so historical blocks retarget the way they always did.
-    const int64_t nTargetSpacing = GetTargetSpacing(pindexLast->nHeight + 1, params);
+    const int64_t nTargetSpacing = GetTypeTargetSpacing(pindexLast->nHeight + 1, params);
+
+    // Retarget against this mechanism's own history, not the chain's. Below the
+    // fork every block is proof-of-work and this call returns pindexLast itself,
+    // so the walk below is bit-for-bit what it always was.
+    pindexLast = GetLastBlockOfType(pindexLast, fProofOfStake, params);
+    if (!pindexLast || pindexLast->nHeight < nPastBlocks) {
+        return bnPowLimit.GetCompact();
+    }
 
     if (params.fPowAllowMinDifficultyBlocks) {
         // recent block is more than 2 hours old
@@ -130,7 +172,13 @@ unsigned int static DarkGravityWave(const CBlockIndex* pindexLast, const CBlockH
 
         if(nCountBlocks != nPastBlocks) {
             assert(pindex->pprev); // should never fail
-            pindex = pindex->pprev;
+            // Step to the previous block of the SAME kind. Below the fork this is
+            // just pprev. Above it, running out means this mechanism has not
+            // produced 24 blocks yet, and there is nothing to average.
+            pindex = GetLastBlockOfType(pindex->pprev, fProofOfStake, params);
+            if (!pindex) {
+                return bnPowLimit.GetCompact();
+            }
         }
     }
 
@@ -198,7 +246,7 @@ unsigned int GetNextWorkRequiredBTC(const CBlockIndex* pindexLast, const CBlockH
    return CalculateNextWorkRequired(pindexLast, pindexFirst->GetBlockTime(), params);
 }
 
-unsigned int GetNextWorkRequired(const CBlockIndex* pindexLast, const CBlockHeader *pblock, const Consensus::Params& params)
+unsigned int GetNextWorkRequired(const CBlockIndex* pindexLast, const CBlockHeader *pblock, const Consensus::Params& params, bool fProofOfStake)
 {
     // this is only active on devnets
     if (pindexLast->nHeight < params.nMinimumDifficultyBlocks) {
@@ -208,7 +256,7 @@ unsigned int GetNextWorkRequired(const CBlockIndex* pindexLast, const CBlockHead
 
     // Most recent algo first
     if (pindexLast->nHeight + 1 >= params.nPowDGWHeight) {
-        return DarkGravityWave(pindexLast, pblock, params);
+        return DarkGravityWave(pindexLast, pblock, params, fProofOfStake);
     }
     else if (pindexLast->nHeight + 1 >= params.nPowKGWHeight) {
         return KimotoGravityWell(pindexLast, params);

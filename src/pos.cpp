@@ -95,6 +95,11 @@ bool CheckBlockSignature(const CBlock& block)
     return false;
 }
 
+bool BlockIndexIsProofOfStake(const CBlockIndex* pindex, const Consensus::Params& params)
+{
+    return pindex && IsPoSEnabled(pindex->nHeight, params) && pindex->nNonce == 0;
+}
+
 uint256 ComputeStakeModifier(const CBlockIndex* pindexPrev, const uint256& kernel)
 {
     if (!pindexPrev)
