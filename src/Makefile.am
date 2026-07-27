@@ -195,6 +195,7 @@ BITCOIN_CORE_H = \
   noui.h \
   policy/fees.h \
   policy/policy.h \
+  pos.h \
   pow.h \
   protocol.h \
   random.h \
@@ -312,6 +313,7 @@ libruxcrypto_server_a_SOURCES = \
   noui.cpp \
   policy/fees.cpp \
   policy/policy.cpp \
+  pos.cpp \
   pow.cpp \
   privatesend.cpp \
   privatesend-server.cpp \

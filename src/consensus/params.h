@@ -159,6 +159,11 @@ struct Params {
      */
     int nPoSForkHeight;
     /**
+     * Block height from which proof-of-work blocks are no longer accepted, i.e.
+     * the end of the hybrid PoW+PoS window. Must be greater than nPoSForkHeight.
+     */
+    int nPoWDisableHeight;
+    /**
      * Minimum blocks including miner confirmation of the total of nMinerConfirmationWindow blocks in a retargeting period,
      * (nPowTargetTimespan / nPowTargetSpacing) which is also used for BIP9 deployments.
      * Default BIP9Deployment::nThreshold value for deployments where it's not specified and for unknown deployments.

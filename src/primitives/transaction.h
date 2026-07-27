@@ -295,6 +295,18 @@ public:
         return (vin.size() == 1 && vin[0].prevout.IsNull());
     }
 
+    /**
+     * A coinstake is the transaction that claims a proof-of-stake block: unlike a
+     * coinbase it SPENDS a real input (the stake), and it is marked by an empty
+     * first output, with the stake plus reward paid out in the outputs after it.
+     * Convention inherited from the Peercoin/PIVX family of chains.
+     */
+    bool IsCoinStake() const
+    {
+        return (!vin.empty() && !vin[0].prevout.IsNull() &&
+                vout.size() >= 2 && vout[0].IsNull());
+    }
+
     friend bool operator==(const CTransaction& a, const CTransaction& b)
     {
         return a.hash == b.hash;
