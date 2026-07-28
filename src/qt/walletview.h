@@ -17,6 +17,7 @@ class PlatformStyle;
 class ReceiveCoinsDialog;
 class SendCoinsDialog;
 class SendCoinsRecipient;
+class StakingPage;
 class TransactionView;
 class WalletModel;
 class AddressBookPage;
