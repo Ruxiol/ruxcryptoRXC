@@ -15,11 +15,14 @@ $(package)_dependencies=gmp
 # opens by unsetting exactly that variable from the cache before searching.
 #
 # Rather than keep guessing at which cmake variable survives, the include path is
-# written into relic's own CMakeLists, after the cmake_minimum_required block.
-# A native build never needed this because the system libgmp-dev header was there
-# to be found; for Windows there is no system gmp.
+# written into relic's own CMakeLists. It has to go AFTER project(): cmake
+# initialises directory properties there, and anything set before it is thrown
+# away -- which is exactly what happened on the first attempt at this.
+#
+# A native build never needed any of it, because the system libgmp-dev header was
+# there to be found. Cross-compiling for Windows there is no system gmp.
 define $(package)_preprocess_cmds
-  sed -i.bak '5i include_directories($(host_prefix)/include)' contrib/relic/CMakeLists.txt
+  sed -i.bak 's|^project(RELIC C CXX)|project(RELIC C CXX)\ninclude_directories($(host_prefix)/include)|' contrib/relic/CMakeLists.txt
 endef
 
 define $(package)_set_vars
