@@ -15,6 +15,7 @@
 #include "receivecoinsdialog.h"
 #include "sendcoinsdialog.h"
 #include "signverifymessagedialog.h"
+#include "stakingpage.h"
 #include "transactionrecord.h"
 #include "transactiontablemodel.h"
 #include "transactionview.h"
