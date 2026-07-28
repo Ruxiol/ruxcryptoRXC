@@ -3257,7 +3257,18 @@ CWallet::StakingStatus CWallet::GetStakingStatus()
             continue;
         ret.eligibleBalance += txout.nValue;
         ret.eligibleOutputs++;
+
+        StakingOutput so;
+        so.amount = txout.nValue;
+        so.depth = out.nDepth;
+        CTxDestination dest;
+        if (ExtractDestination(txout.scriptPubKey, dest))
+            so.address = CBitcoinAddress(dest).ToString();
+        ret.outputs.push_back(so);
     }
+    // Largest first: the ones carrying most of the weight belong at the top.
+    std::sort(ret.outputs.begin(), ret.outputs.end(),
+              [](const StakingOutput& a, const StakingOutput& b) { return a.amount > b.amount; });
     ret.weight = ret.eligibleBalance / COIN;
 
     const int nHeight = chainActive.Height() + 1;

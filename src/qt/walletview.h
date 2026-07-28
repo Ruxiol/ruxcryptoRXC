@@ -67,6 +67,7 @@ private:
     AddressBookPage *usedSendingAddressesPage;
     AddressBookPage *usedReceivingAddressesPage;
     MasternodeList *masternodeListPage;
+    StakingPage *stakingPage;
 
     TransactionView *transactionView;
 
@@ -81,6 +82,8 @@ public Q_SLOTS:
     void gotoHistoryPage();
     /** Switch to masternode page */
     void gotoMasternodePage();
+    /** Switch to the staking page */
+    void gotoStakingPage();
     /** Switch to receive coins page */
     void gotoReceiveCoinsPage();
     /** Switch to send coins page */

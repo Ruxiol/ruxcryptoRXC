@@ -87,6 +87,9 @@ WalletView::WalletView(const PlatformStyle *_platformStyle, QWidget *parent):
         addWidget(masternodeListPage);
     }
 
+    stakingPage = new StakingPage(platformStyle);
+    addWidget(stakingPage);
+
     // Clicking on a transaction on the overview pre-selects the transaction on the transaction history page
     connect(overviewPage, SIGNAL(transactionClicked(QModelIndex)), transactionView, SLOT(focusTransaction(QModelIndex)));
     connect(overviewPage, SIGNAL(outOfSyncWarningClicked()), this, SLOT(requestedSyncWarningInfo()));
@@ -155,6 +158,9 @@ void WalletView::setWalletModel(WalletModel *_walletModel)
     if (!fLiteMode && settings.value("fShowMasternodesTab").toBool()) {
         masternodeListPage->setWalletModel(_walletModel);
     }
+    if (stakingPage) {
+        stakingPage->setWalletModel(_walletModel);
+    }
     receiveCoinsPage->setModel(_walletModel);
     sendCoinsPage->setModel(_walletModel);
     usedReceivingAddressesPage->setModel(_walletModel->getAddressTableModel());
@@ -221,6 +227,11 @@ void WalletView::gotoOverviewPage()
 void WalletView::gotoHistoryPage()
 {
     setCurrentWidget(transactionsPage);
+}
+
+void WalletView::gotoStakingPage()
+{
+    setCurrentWidget(stakingPage);
 }
 
 void WalletView::gotoMasternodePage()

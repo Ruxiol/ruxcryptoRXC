@@ -99,6 +99,7 @@ BitcoinGUI::BitcoinGUI(const PlatformStyle *_platformStyle, const NetworkStyle *
     overviewAction(0),
     historyAction(0),
     masternodeAction(0),
+    stakingAction(0),
     quitAction(0),
     sendCoinsAction(0),
     sendCoinsMenuAction(0),
@@ -359,6 +360,21 @@ void BitcoinGUI::createActions()
         connect(masternodeAction, SIGNAL(triggered()), this, SLOT(gotoMasternodePage()));
     }
 
+    // Not behind a setting. From the fork on this is what the wallet is for, and
+    // a feature nobody can find might as well not exist.
+    stakingAction = new QAction(QIcon(":/icons/" + theme + "/tx_mined"), tr("&Staking"), this);
+    stakingAction->setStatusTip(tr("Earn blocks by holding coins"));
+    stakingAction->setToolTip(stakingAction->statusTip());
+    stakingAction->setCheckable(true);
+#ifdef Q_OS_MAC
+    stakingAction->setShortcut(QKeySequence(Qt::CTRL + Qt::Key_6));
+#else
+    stakingAction->setShortcut(QKeySequence(Qt::ALT + Qt::Key_6));
+#endif
+    tabGroup->addAction(stakingAction);
+    connect(stakingAction, SIGNAL(triggered()), this, SLOT(showNormalIfMinimized()));
+    connect(stakingAction, SIGNAL(triggered()), this, SLOT(gotoStakingPage()));
+
     // These showNormalIfMinimized are needed because Send Coins and Receive Coins
     // can be triggered from the tray menu, and need to show the GUI to be useful.
     connect(overviewAction, SIGNAL(triggered()), this, SLOT(showNormalIfMinimized()));
@@ -566,6 +582,9 @@ void BitcoinGUI::createToolBars()
         {
             toolbar->addAction(masternodeAction);
         }
+        if (stakingAction) {
+            toolbar->addAction(stakingAction);
+        }
         toolbar->setMovable(false); // remove unused icon in upper left corner
         overviewAction->setChecked(true);
 
@@ -711,6 +730,7 @@ void BitcoinGUI::setWalletActionsEnabled(bool enabled)
     receiveCoinsMenuAction->setEnabled(enabled);
     historyAction->setEnabled(enabled);
     QSettings settings;
+    if (stakingAction) stakingAction->setEnabled(enabled);
     if (!fLiteMode && settings.value("fShowMasternodesTab").toBool() && masternodeAction) {
         masternodeAction->setEnabled(enabled);
     }
@@ -872,6 +892,12 @@ void BitcoinGUI::gotoHistoryPage()
 {
     historyAction->setChecked(true);
     if (walletFrame) walletFrame->gotoHistoryPage();
+}
+
+void BitcoinGUI::gotoStakingPage()
+{
+    if (stakingAction) stakingAction->setChecked(true);
+    if (walletFrame) walletFrame->gotoStakingPage();
 }
 
 void BitcoinGUI::gotoMasternodePage()
