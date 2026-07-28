@@ -859,7 +859,13 @@ public:
         consensus.DIP0003EnforcementHeight = 500;
         consensus.nPoSForkHeight = 200;   // regtest: namjerno nisko da se fork moze testirati
         consensus.nPoWDisableHeight = 300; // regtest
-        consensus.nStakeMinAmount = 100 * COIN;    // regtest: sitno, da testovi budu jeftini
+        // Ten, which is exactly the post-fork block reward here.
+        // At a hundred a regtest chain dries itself out: rewards arrive in tens,
+        // so once the large outputs are spent -- on a masternode collateral, say --
+        // nothing can stake, no blocks are produced, and the transaction that would
+        // consolidate the dust can never confirm. Lowering it cannot invalidate
+        // history: every stake already made used an output above the old figure.
+        consensus.nStakeMinAmount = 10 * COIN;     // regtest
         consensus.nMNCollateral = 100 * COIN;
         consensus.nMNCollateralPostFork = 1000 * COIN;
         consensus.nStakeMinConfirmations = 1;      // regtest: bez cekanja
