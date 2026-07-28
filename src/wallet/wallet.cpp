@@ -18,10 +18,12 @@
 #include "validation.h"
 #include "net.h"
 #include "policy/policy.h"
+#include "pos.h"
 #include "primitives/block.h"
 #include "primitives/transaction.h"
 #include "script/script.h"
 #include "script/sign.h"
+#include "script/standard.h"
 #include "scheduler.h"
 #include "timedata.h"
 #include "txmempool.h"
@@ -3232,6 +3234,77 @@ bool CWallet::HasCollateralInputs(bool fOnlyConfirmed) const
     AvailableCoins(vCoins, fOnlyConfirmed, NULL, false, ONLY_PRIVATESEND_COLLATERAL);
 
     return !vCoins.empty();
+}
+
+bool CWallet::CreateCoinStake(unsigned int nBits, uint32_t nTime, const uint256& nStakeModifier,
+                              CMutableTransaction& txCoinStake, CKey& keyOut, uint256& hashProofOfStake)
+{
+    const Consensus::Params& params = Params().GetConsensus();
+
+    if ((nTime & params.nStakeTimestampMask) != 0)
+        return false;  // caller should have masked it; refuse rather than silently retime
+
+    std::vector<COutput> vCoins;
+    {
+        LOCK2(cs_main, cs_wallet);
+        AvailableCoins(vCoins, true);
+    }
+
+    for (const COutput& out : vCoins) {
+        if (!out.fSpendable)
+            continue;
+        if (out.nDepth < params.nStakeMinConfirmations)
+            continue;
+
+        const CTxOut& txout = out.tx->tx->vout[out.i];
+        if (txout.nValue < params.nStakeMinAmount)
+            continue;
+
+        // Only the two script forms CheckBlockSignature can verify are worth
+        // trying. Staking anything else would produce a block the network
+        // refuses, so it is better to skip it here than to learn that later.
+        txnouttype whichType;
+        std::vector<std::vector<unsigned char> > vSolutions;
+        if (!Solver(txout.scriptPubKey, whichType, vSolutions))
+            continue;
+
+        CKeyID keyID;
+        if (whichType == TX_PUBKEY) {
+            keyID = CPubKey(vSolutions[0]).GetID();
+        } else if (whichType == TX_PUBKEYHASH) {
+            keyID = CKeyID(uint160(vSolutions[0]));
+        } else {
+            continue;
+        }
+
+        const COutPoint prevout(out.tx->GetHash(), out.i);
+        if (!CheckStakeKernelHash(nBits, nStakeModifier, prevout, txout.nValue, nTime, params, hashProofOfStake))
+            continue;
+
+        // The block will be signed with this key, so a wallet that cannot
+        // produce it -- watch-only, or locked -- has not really won anything.
+        if (!GetKey(keyID, keyOut))
+            continue;
+
+        txCoinStake = CMutableTransaction();
+        txCoinStake.vin.push_back(CTxIn(prevout));
+        // vout[0] empty: this is what makes the transaction a coinstake, and
+        // what every reader of the block recognises it by.
+        txCoinStake.vout.push_back(CTxOut(0, CScript()));
+        // Same value, same script. A coinstake proves; it does not pay.
+        txCoinStake.vout.push_back(CTxOut(txout.nValue, txout.scriptPubKey));
+
+        if (!SignSignature(*this, txout.scriptPubKey, txCoinStake, 0, SIGHASH_ALL)) {
+            LogPrintf("CreateCoinStake -- failed to sign the staked input\n");
+            continue;
+        }
+
+        LogPrintf("CreateCoinStake -- found a stake: %s:%d value=%d nTime=%u\n",
+                  prevout.hash.ToString(), prevout.n, txout.nValue, nTime);
+        return true;
+    }
+
+    return false;
 }
 
 bool CWallet::CreateCollateralTransaction(CMutableTransaction& txCollateral, std::string& strReason)

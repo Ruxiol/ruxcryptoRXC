@@ -984,6 +984,29 @@ public:
                            std::string& strFailReason, const CCoinControl *coinControl = NULL, bool sign = true, AvailableCoinsType nCoinType=ALL_COINS, bool fUseInstantSend=false, int nExtraPayloadSize = 0);
     bool CommitTransaction(CWalletTx& wtxNew, CReserveKey& reservekey, CConnman* connman, CValidationState& state, const std::string& strCommand="tx");
 
+    /**
+     * Try to build a coinstake for one moment in time.
+     *
+     * This is the staker's equivalent of a single hash attempt, and it either
+     * succeeds outright or it does not -- there is nothing to grind. The block
+     * time is the only free input, and it is pinned to a 16-second grid, so a
+     * wallet gets one attempt per output per grid slot and no more.
+     *
+     * The transaction produced is deliberately value-neutral: it spends the
+     * staked output and recreates it, unchanged, to the same script. The reward
+     * is paid through the coinbase like a miner's, so that emission, the
+     * masternode split and the superblock limits stay on a single code path
+     * (see the coinstake checks in ConnectBlock).
+     *
+     * @param nBits    the proof-of-stake target for this block
+     * @param nTime    candidate block time, already masked to the grid
+     * @param keyOut   key controlling the staked output, needed to sign the block
+     * @return false when nothing this wallet holds meets the target at nTime,
+     *         which is the ordinary case and not an error
+     */
+    bool CreateCoinStake(unsigned int nBits, uint32_t nTime, const uint256& nStakeModifier,
+                         CMutableTransaction& txCoinStake, CKey& keyOut, uint256& hashProofOfStake);
+
     bool CreateCollateralTransaction(CMutableTransaction& txCollateral, std::string& strReason);
     bool ConvertList(std::vector<CTxIn> vecTxIn, std::vector<CAmount>& vecAmounts);
 
