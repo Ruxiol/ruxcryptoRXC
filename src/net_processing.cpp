@@ -35,6 +35,7 @@
 #include "governance.h"
 #include "instantx.h"
 #include "masternode-payments.h"
+#include "pos.h"
 #include "masternode-sync.h"
 #include "masternode-meta.h"
 #ifdef ENABLE_WALLET
@@ -840,6 +841,18 @@ static std::shared_ptr<const CBlockHeaderAndShortTxIDs> most_recent_compact_bloc
 static uint256 most_recent_block_hash;
 
 void PeerLogicValidation::NewPoWValidBlock(const CBlockIndex *pindex, const std::shared_ptr<const CBlock>& pblock) {
+    // A compact block cannot carry a proof-of-stake block.
+    //
+    // BIP152 sends the header plus short transaction ids and has the peer
+    // rebuild the block from its own mempool. The block signature is neither a
+    // header field nor a transaction, so it survives none of that: the peer
+    // reconstructs a block with an empty vchBlockSig and rejects it as
+    // bad-blocksig -- and, because the rebuild looks like a successful one,
+    // does so while banning the sender. Stakes go out whole, always.
+    if (pblock->IsProofOfStake()) {
+        return;
+    }
+
     std::shared_ptr<const CBlockHeaderAndShortTxIDs> pcmpctblock = std::make_shared<const CBlockHeaderAndShortTxIDs> (*pblock);
     const CNetMsgMaker msgMaker(PROTOCOL_VERSION);
 
@@ -1163,7 +1176,10 @@ void static ProcessGetBlockData(CNode* pfrom, const Consensus::Params& consensus
             // they won't have a useful mempool to match against a compact block,
             // and we don't feel like constructing the object for them, so
             // instead we respond with the full, non-compact block.
-            if (CanDirectFetch(consensusParams) && mi->second->nHeight >= chainActive.Height() - MAX_CMPCTBLOCK_DEPTH) {
+            // Never compact for a stake -- see NewPoWValidBlock. Falling through
+            // to the full block below is always allowed by BIP152.
+            if (CanDirectFetch(consensusParams) && mi->second->nHeight >= chainActive.Height() - MAX_CMPCTBLOCK_DEPTH
+                    && !pblock->IsProofOfStake()) {
                 if (a_recent_compact_block && a_recent_compact_block->header.GetHash() == mi->second->GetBlockHash()) {
                     connman.PushMessage(pfrom, msgMaker.Make(NetMsgType::CMPCTBLOCK, *a_recent_compact_block));
                 } else {
@@ -2751,7 +2767,16 @@ bool static ProcessMessage(CNode* pfrom, const std::string& strCommand, CDataStr
                             pindexLast->GetBlockHash().ToString(), pindexLast->nHeight);
                 }
                 if (vGetData.size() > 0) {
-                    if (nodestate->fSupportsDesiredCmpctVersion && vGetData.size() == 1 && mapBlocksInFlight.size() == 1 && pindexLast->pprev->IsValid(BLOCK_VALID_CHAIN)) {
+                    // Asking for a stake in compact form would only earn us a
+                    // block we cannot verify, so ask for those whole.
+                    bool fFetchIsStake = false;
+                    {
+                        BlockMap::iterator itFetch = mapBlockIndex.find(vGetData[0].hash);
+                        if (itFetch != mapBlockIndex.end()) {
+                            fFetchIsStake = BlockIndexIsProofOfStake(itFetch->second, chainparams.GetConsensus());
+                        }
+                    }
+                    if (nodestate->fSupportsDesiredCmpctVersion && vGetData.size() == 1 && mapBlocksInFlight.size() == 1 && pindexLast->pprev->IsValid(BLOCK_VALID_CHAIN) && !fFetchIsStake) {
                         // In any case, we want to download using a compact block, not a regular one
                         vGetData[0] = CInv(MSG_CMPCT_BLOCK, vGetData[0].hash);
                     }
@@ -3435,7 +3460,8 @@ bool SendMessages(CNode* pto, CConnman& connman, const std::atomic<bool>& interr
                 }
             }
             if (!fRevertToInv && !vHeaders.empty()) {
-                if (vHeaders.size() == 1 && state.fPreferHeaderAndIDs) {
+                if (vHeaders.size() == 1 && state.fPreferHeaderAndIDs
+                        && !BlockIndexIsProofOfStake(pBestIndex, consensusParams)) {
                     // We only send up to 1 block as header-and-ids, as otherwise
                     // probably means we're doing an initial-ish-sync or they're slow
                     LogPrint("net", "%s sending header-and-ids %s to peer=%d\n", __func__,
