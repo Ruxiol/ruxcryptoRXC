@@ -18,6 +18,7 @@
 #include "validation.h"
 #include "net.h"
 #include "policy/policy.h"
+#include "miner.h"
 #include "pos.h"
 #include "primitives/block.h"
 #include "primitives/transaction.h"
