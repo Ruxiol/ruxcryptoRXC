@@ -1127,6 +1127,12 @@ margin-right:20px;
 margin-left:0;
 margin-top:0;
 background-image: url(':/images/light-retro/ruxcrypto_logo_horizontal');
+/* Qt tiles a background image by default. The logo used to be a 1x1
+   transparent placeholder, so nobody noticed; with the real artwork in
+   place it papered over the whole transaction list. */
+background-repeat: no-repeat;
+background-position: bottom left;
+padding-bottom: 80px;
 
 }
 
