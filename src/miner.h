@@ -17,6 +17,7 @@
 class CBlockIndex;
 class CChainParams;
 class CConnman;
+class CKey;
 class CReserveKey;
 class CScript;
 class CWallet;
