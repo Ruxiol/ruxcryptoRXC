@@ -931,8 +931,10 @@ void CInstantSendManager::SyncTransaction(const CTransaction& tx, const CBlockIn
         return;
     }
 
-    if (tx.IsCoinBase() || tx.vin.empty()) {
-        // coinbase can't and TXs with no inputs be locked
+    if (tx.IsCoinBase() || tx.IsCoinStake() || tx.vin.empty()) {
+        // coinbase can't and TXs with no inputs be locked -- and neither can a
+        // coinstake, which is never relayed through the mempool and belongs to
+        // its block rather than to a sender
         return;
     }
 

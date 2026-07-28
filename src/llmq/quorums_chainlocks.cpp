@@ -352,7 +352,16 @@ void CChainLocksHandler::SyncTransaction(const CTransaction& tx, const CBlockInd
     }
 
     bool handleTx = true;
-    if (tx.IsCoinBase() || tx.vin.empty()) {
+    // A coinstake is treated exactly like a coinbase here, and for the same
+    // reason: it is part of how the block is built, not a payment somebody
+    // sent. It never passes through the mempool -- it is refused there -- so it
+    // can never carry an InstantSend lock, and it cannot exist apart from the
+    // block that contains it, so there is nothing to double-spend.
+    //
+    // Counting it broke ChainLocks outright on a proof-of-stake chain: the tip
+    // always holds a coinstake seconds old and never locked, so the safety
+    // check below refused to sign the tip, every time, forever.
+    if (tx.IsCoinBase() || tx.IsCoinStake() || tx.vin.empty()) {
         handleTx = false;
     }
 
@@ -410,7 +419,8 @@ CChainLocksHandler::BlockTxs::mapped_type CChainLocksHandler::GetBlockTxs(const 
 
             ret = std::make_shared<std::unordered_set<uint256, StaticSaltedHasher>>();
             for (auto& tx : block.vtx) {
-                if (tx->IsCoinBase() || tx->vin.empty()) {
+                // Same as in SyncTransaction: coinstakes are block machinery.
+                if (tx->IsCoinBase() || tx->IsCoinStake() || tx->vin.empty()) {
                     continue;
                 }
                 ret->emplace(tx->GetHash());
