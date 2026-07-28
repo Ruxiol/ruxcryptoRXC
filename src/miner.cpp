@@ -267,7 +267,15 @@ std::unique_ptr<CBlockTemplate> BlockAssembler::CreateNewBlock(const CScript& sc
         UpdateTime(pblock, chainparams.GetConsensus(), pindexPrev);
     }
     pblock->nBits          = GetNextWorkRequired(pindexPrev, pblock, chainparams.GetConsensus(), fProofOfStake);
-    pblock->nNonce         = 0;
+    // Above the fork nNonce == 0 MEANS proof-of-stake, so a proof-of-work
+    // template must not start there. It used to, and the effect was that
+    // TestBlockValidity read an unmined template as a stake, computed the stake
+    // target and rejected the miner's own block with bad-diffbits.
+    //
+    // Starting at 1 also makes the rule honest rather than probabilistic: nonce
+    // zero is reserved, so a mined block can never collide with the marker by
+    // luck. It costs one value out of four billion.
+    pblock->nNonce         = fProofOfStake ? 0 : 1;
     pblocktemplate->nPrevBits = pindexPrev->nBits;
     pblocktemplate->vTxSigOps[0] = GetLegacySigOpCount(*pblock->vtx[0]);
 

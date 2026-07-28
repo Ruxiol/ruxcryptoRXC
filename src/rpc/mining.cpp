@@ -585,7 +585,9 @@ UniValue getblocktemplate(const JSONRPCRequest& request)
 
     // Update nTime
     UpdateTime(pblock, consensusParams, pindexPrev);
-    pblock->nNonce = 0;
+    // Not zero: above the fork that value is reserved to mean proof-of-stake, so
+    // external miners are handed a starting point that cannot be mistaken for one.
+    pblock->nNonce = 1;
 
     UniValue aCaps(UniValue::VARR); aCaps.push_back("proposal");
 
