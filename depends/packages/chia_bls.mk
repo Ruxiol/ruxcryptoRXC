@@ -9,21 +9,6 @@ $(package)_dependencies=gmp
 
 #  for i in $($(package)_patches); do patch -N -p1 < $($(package)_patch_dir)/$$$$i; done
 
-# relic's bundled CMake finds gmp, reports "Configured GMP", and still does not
-# put the header on the compiler's search path when cross-compiling -- relic_err.c
-# stops at <gmp.h>. Passing -DGMP_INCLUDE_DIR is no use either: cmake/gmp.cmake
-# opens by unsetting exactly that variable from the cache before searching.
-#
-# Rather than keep guessing at which cmake variable survives, the include path is
-# written into relic's own CMakeLists. It has to go AFTER project(): cmake
-# initialises directory properties there, and anything set before it is thrown
-# away -- which is exactly what happened on the first attempt at this.
-#
-# A native build never needed any of it, because the system libgmp-dev header was
-# there to be found. Cross-compiling for Windows there is no system gmp.
-define $(package)_preprocess_cmds
-  sed -i.bak 's|^project(RELIC C CXX)|project(RELIC C CXX)\ninclude_directories($(host_prefix)/include)|' contrib/relic/CMakeLists.txt
-endef
 
 define $(package)_set_vars
   $(package)_config_opts=-DCMAKE_INSTALL_PREFIX=$($(package)_staging_dir)/$(host_prefix)
@@ -38,12 +23,16 @@ define $(package)_set_vars
   $(package)_config_opts_armv7l+= -DWSIZE=32
   $(package)_config_opts_debug=-DDEBUG=ON -DCMAKE_BUILD_TYPE=Debug
 
-  # config_cmds below exports CFLAGS as "$(cflags) $(cppflags)", and cmake takes
-  # that into CMAKE_C_FLAGS for every target -- including relic_s, which is the
-  # one that cannot find <gmp.h>. Adding it to relic's CMakeLists was not enough:
-  # whatever relic does with its own include directories, they do not reach that
-  # target.
-  $(package)_cppflags_mingw32+= -I$(host_prefix)/include
+  # relic rebuilds CMAKE_C_FLAGS from scratch at CMakeLists:373 --
+  #   set(CMAKE_C_FLAGS "-pipe -std=c99 ${AFLAGS} ${WFLAGS} ${DFLAGS} ${PFLAGS} ${CFLAGS}")
+  # -- so anything handed to cmake as CMAKE_C_FLAGS or through the CFLAGS
+  # environment is discarded, and its src/ directory does not inherit
+  # include_directories() either: the generated includes_C.rsp lists only
+  # relic's own three paths. That ${CFLAGS} is a cmake variable nobody sets,
+  # and it is relic's own knob for exactly this. Cross-compiling for Windows
+  # there is no system gmp to fall back on, which is why only mingw needs it.
+  $(package)_config_opts_mingw32+= -DCFLAGS=-I$(host_prefix)/include
+
 
   ifneq ($(darwin_native_toolchain),)
     $(package)_config_opts_darwin+= -DCMAKE_AR="$(host_prefix)/native/bin/$($(package)_ar)"
