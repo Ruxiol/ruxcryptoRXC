@@ -12,6 +12,8 @@
 #include "coins.h"
 #include "consensus/consensus.h"
 #include "consensus/merkle.h"
+#include "pos.h"
+#include "key.h"
 #include "consensus/validation.h"
 #include "hash.h"
 #include "validation.h"
@@ -127,9 +129,13 @@ void BlockAssembler::resetBlock()
     nFees = 0;
 }
 
-std::unique_ptr<CBlockTemplate> BlockAssembler::CreateNewBlock(const CScript& scriptPubKeyIn)
+std::unique_ptr<CBlockTemplate> BlockAssembler::CreateNewBlock(const CScript& scriptPubKeyIn,
+                                                               const CMutableTransaction* pTxCoinStake,
+                                                               const CKey* pStakeKey,
+                                                               uint32_t nStakeTime)
 {
     int64_t nTimeStart = GetTimeMicros();
+    const bool fProofOfStake = (pTxCoinStake != NULL);
 
     resetBlock();
 
@@ -241,13 +247,39 @@ std::unique_ptr<CBlockTemplate> BlockAssembler::CreateNewBlock(const CScript& sc
     pblock->vtx[0] = MakeTransactionRef(std::move(coinbaseTx));
     pblocktemplate->vTxFees[0] = -nFees;
 
+    if (fProofOfStake) {
+        // The coinstake goes directly after the coinbase, which is what makes
+        // this a proof-of-stake block as far as every reader is concerned.
+        pblock->vtx.insert(pblock->vtx.begin() + 1, MakeTransactionRef(*pTxCoinStake));
+        pblocktemplate->vTxFees.insert(pblocktemplate->vTxFees.begin() + 1, 0);
+        pblocktemplate->vTxSigOps.insert(pblocktemplate->vTxSigOps.begin() + 1, GetLegacySigOpCount(*pblock->vtx[1]));
+    }
+
     // Fill in header
     pblock->hashPrevBlock  = pindexPrev->GetBlockHash();
-    UpdateTime(pblock, chainparams.GetConsensus(), pindexPrev);
-    pblock->nBits          = GetNextWorkRequired(pindexPrev, pblock, chainparams.GetConsensus());
+    if (fProofOfStake) {
+        // NOT the wall clock. The kernel was solved for this exact instant and
+        // is bound to it, so letting UpdateTime pick a fresher time would leave
+        // a block whose proof no longer matches its own header.
+        pblock->nTime = nStakeTime;
+    } else {
+        UpdateTime(pblock, chainparams.GetConsensus(), pindexPrev);
+    }
+    pblock->nBits          = GetNextWorkRequired(pindexPrev, pblock, chainparams.GetConsensus(), fProofOfStake);
     pblock->nNonce         = 0;
     pblocktemplate->nPrevBits = pindexPrev->nBits;
     pblocktemplate->vTxSigOps[0] = GetLegacySigOpCount(*pblock->vtx[0]);
+
+    if (fProofOfStake) {
+        // Everything the hash covers is settled by now, so the merkle root can
+        // be fixed and the block signed. Order matters: the signature is over
+        // the block hash, so any later edit to the header would invalidate it.
+        pblock->hashMerkleRoot = BlockMerkleRoot(*pblock);
+        if (!pStakeKey || !pStakeKey->Sign(pblock->GetHash(), pblock->vchBlockSig)) {
+            LogPrintf("%s: failed to sign the proof-of-stake block\n", __func__);
+            return nullptr;
+        }
+    }
 
     CValidationState state;
     if (!TestBlockValidity(state, chainparams, *pblock, pindexPrev, false, false)) {

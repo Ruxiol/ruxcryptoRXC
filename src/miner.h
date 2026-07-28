@@ -169,7 +169,22 @@ public:
     BlockAssembler(const CChainParams& params, const Options& options);
 
     /** Construct a new block template with coinbase to scriptPubKeyIn */
-    std::unique_ptr<CBlockTemplate> CreateNewBlock(const CScript& scriptPubKeyIn);
+    /**
+     * Assemble a block template.
+     *
+     * Passing a coinstake makes it a proof-of-stake block: the transaction goes
+     * in at index 1, nTime is forced to the moment the kernel was solved for
+     * (the kernel is bound to that instant -- reusing the wall clock here would
+     * invalidate the proof), and the finished block is signed with stakeKey.
+     *
+     * The coinbase is built the same way either way. The reward and the
+     * masternode share go through it exactly as they do when mining, which is
+     * what keeps a single emission path for both kinds of block.
+     */
+    std::unique_ptr<CBlockTemplate> CreateNewBlock(const CScript& scriptPubKeyIn,
+                                                   const CMutableTransaction* pTxCoinStake = NULL,
+                                                   const CKey* pStakeKey = NULL,
+                                                   uint32_t nStakeTime = 0);
 
 private:
     // utility functions
