@@ -73,6 +73,13 @@ void OptionsModel::Init(bool resetSettings)
         settings.setValue("fMinimizeOnClose", false);
     fMinimizeOnClose = settings.value("fMinimizeOnClose").toBool();
 
+    // The masternodes tab had no default at all, and an unset QVariant reads as
+    // false -- so it was hidden until someone went looking for it in Options and
+    // restarted. Masternodes and staking are what this wallet is for from the
+    // fork on; they should not be a setting one has to discover.
+    if (!settings.contains("fShowMasternodesTab"))
+        settings.setValue("fShowMasternodesTab", true);
+
     // Display
     if (!settings.contains("nDisplayUnit"))
         settings.setValue("nDisplayUnit", BitcoinUnits::RXC);

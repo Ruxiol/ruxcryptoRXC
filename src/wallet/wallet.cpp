@@ -3265,7 +3265,7 @@ CWallet::StakingStatus CWallet::GetStakingStatus()
         ret.status = _("Staking is switched off");
     else if (!IsPoSEnabled(nHeight, consensus))
         ret.status = strprintf(_("Staking begins at block %d"), consensus.nPoSForkHeight);
-    else if (IsLocked())
+    else if (IsLocked(true))
         ret.status = _("Wallet is locked");
     else if (IsInitialBlockDownload())
         ret.status = _("Still syncing");

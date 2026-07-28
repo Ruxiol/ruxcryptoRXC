@@ -586,7 +586,12 @@ void ThreadStakeMinter(CWallet* pwallet)
             // Staking a block nobody will accept is worse than not staking: the
             // stake is spent in the attempt and has to mature all over again.
             // So wait for a chain worth building on.
-            if (pwallet->IsLocked() || IsInitialBlockDownload()) {
+            // IsLocked(true) asks whether the wallet is locked even for
+            // signing. A wallet unlocked for staking only can sign a
+            // coinstake but cannot spend, which is the whole point: a
+            // machine that stakes around the clock should not be one that
+            // can be emptied by whoever reaches the keyboard.
+            if (pwallet->IsLocked(true) || IsInitialBlockDownload()) {
                 MilliSleep(10000);
                 continue;
             }

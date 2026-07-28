@@ -961,6 +961,13 @@ public:
      * would eventually disagree, and the one the user is looking at would be
      * the wrong one.
      */
+    struct StakingOutput
+    {
+        CAmount amount = 0;
+        int depth = 0;
+        std::string address;
+    };
+
     struct StakingStatus
     {
         bool enabled = false;          //!< -staking is on
@@ -971,6 +978,9 @@ public:
         CAmount eligibleBalance = 0;   //!< their total
         double difficulty = 0;         //!< the STAKE difficulty, not the tip's
         int64_t expectedSeconds = -1;  //!< rough wait, -1 when unknowable
+        //! The outputs actually doing the work. A staker's first question when
+        //! nothing is happening is which coins are in and which are sitting out.
+        std::vector<StakingOutput> outputs;
     };
     StakingStatus GetStakingStatus();
 
