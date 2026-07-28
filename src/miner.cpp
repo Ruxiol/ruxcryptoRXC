@@ -612,7 +612,12 @@ void ThreadStakeMinter(CWallet* pwallet)
             // input and the timestamp only moves in steps of sixteen seconds, so
             // trying the same slot twice asks the identical question twice.
             const uint32_t nTime = (uint32_t)GetAdjustedTime() & ~(uint32_t)consensus.nStakeTimestampMask;
-            if (nTime <= nLastAttempt) {
+            // Different slot, not merely a later one. Requiring "later" would
+            // wedge the staker permanently if the clock ever stepped backwards,
+            // and retrying a slot after a small correction costs nothing: the
+            // kernel takes the timestamp as an input, so the same slot gives the
+            // same answer.
+            if (nTime == nLastAttempt) {
                 MilliSleep(1000);
                 continue;
             }
