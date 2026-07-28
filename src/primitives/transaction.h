@@ -303,8 +303,15 @@ public:
      */
     bool IsCoinStake() const
     {
+        // The marker is an EMPTY first output -- zero value, no script -- not a
+        // null one. CTxOut::IsNull() here means nValue == -1, which a coinstake
+        // cannot use: a negative output value is refused by CheckTransaction
+        // long before any of this is consulted. Peercoin and PIVX keep a
+        // separate IsEmpty() for exactly this distinction; Dash's CTxOut has
+        // none, so the test is spelled out.
         return (!vin.empty() && !vin[0].prevout.IsNull() &&
-                vout.size() >= 2 && vout[0].IsNull());
+                vout.size() >= 2 &&
+                vout[0].nValue == 0 && vout[0].scriptPubKey.empty());
     }
 
     friend bool operator==(const CTransaction& a, const CTransaction& b)
