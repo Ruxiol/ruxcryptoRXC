@@ -16,6 +16,10 @@
 #include "timedata.h"
 #include "util.h"
 #include "utilmoneystr.h"
+#include "arith_uint256.h"
+#include "miner.h"
+#include "pos.h"
+#include "pow.h"
 #include "validation.h"
 #include "wallet.h"
 #include "walletdb.h"
@@ -2518,6 +2522,117 @@ UniValue setprivatesendamount(const JSONRPCRequest& request)
     return NullUniValue;
 }
 
+UniValue getstakinginfo(const JSONRPCRequest& request)
+{
+    CWallet * const pwallet = GetWalletForJSONRPCRequest(request);
+    if (!EnsureWalletIsAvailable(pwallet, request.fHelp)) {
+        return NullUniValue;
+    }
+
+    if (request.fHelp || request.params.size() != 0)
+        throw std::runtime_error(
+            "getstakinginfo\n"
+            "\nReturns the wallet's proof-of-stake status.\n"
+            "\nResult:\n"
+            "{\n"
+            "  \"enabled\": true|false,        (boolean) staking is switched on (-staking)\n"
+            "  \"staking\": true|false,        (boolean) actually able to stake right now\n"
+            "  \"status\": \"xxx\",              (string) why not, when it is not\n"
+            "  \"weight\": n,                 (numeric) own staking weight, in whole coins\n"
+            "  \"eligible_outputs\": n,       (numeric) outputs old and large enough to stake\n"
+            "  \"eligible_balance\": n,       (numeric) their total value\n"
+            "  \"difficulty\": n,             (numeric) current proof-of-stake difficulty\n"
+            "  \"expected_time\": n,          (numeric) rough seconds until this wallet stakes\n"
+            "  \"min_amount\": n,             (numeric) smallest output that may stake\n"
+            "  \"min_confirmations\": n,      (numeric) confirmations an output needs first\n"
+            "  \"fork_height\": n             (numeric) height staking begins at\n"
+            "}\n"
+            "\nExamples:\n"
+            + HelpExampleCli("getstakinginfo", "")
+            + HelpExampleRpc("getstakinginfo", "")
+        );
+
+    LOCK2(cs_main, pwallet->cs_wallet);
+
+    const Consensus::Params& consensus = Params().GetConsensus();
+    const int nHeight = chainActive.Height() + 1;
+    const bool fEnabled = GetBoolArg("-staking", DEFAULT_STAKING);
+    const bool fForkReached = IsPoSEnabled(nHeight, consensus);
+
+    // Weight is the same quantity the kernel uses, so this is a real answer
+    // rather than a decorative one: it counts only what could actually stake.
+    CAmount nEligible = 0;
+    int nOutputs = 0;
+    std::vector<COutput> vCoins;
+    pwallet->AvailableCoins(vCoins, true);
+    for (const COutput& out : vCoins) {
+        if (!out.fSpendable || out.nDepth < consensus.nStakeMinConfirmations)
+            continue;
+        const CTxOut& txout = out.tx->tx->vout[out.i];
+        if (txout.nValue < consensus.nStakeMinAmount)
+            continue;
+        nEligible += txout.nValue;
+        nOutputs++;
+    }
+    const int64_t nWeight = nEligible / COIN;
+
+    std::string strStatus;
+    bool fStaking = false;
+    if (!fEnabled)                    strStatus = "Staking is switched off (-staking=0)";
+    else if (!fForkReached)           strStatus = strprintf("Staking begins at height %d", consensus.nPoSForkHeight);
+    else if (pwallet->IsLocked())     strStatus = "Wallet is locked";
+    else if (IsInitialBlockDownload())strStatus = "Still syncing";
+    else if (nOutputs == 0)           strStatus = strprintf("No output is both %s or larger and %d confirmations deep",
+                                                            FormatMoney(consensus.nStakeMinAmount), consensus.nStakeMinConfirmations);
+    else                            { strStatus = "Staking"; fStaking = true; }
+
+    unsigned int nBits = 0;
+    double dDiff = 0;
+    int64_t nExpected = -1;
+    if (chainActive.Tip()) {
+        CBlockHeader header;
+        header.nTime = GetAdjustedTime();
+        nBits = GetNextWorkRequired(chainActive.Tip(), &header, consensus, true);
+
+        // The stake difficulty, not the chain tip's -- since the fork those are
+        // two different numbers, and showing the mining one here would be
+        // actively misleading to a staker.
+        int nShift = (nBits >> 24) & 0xff;
+        dDiff = (double)0x0000ffff / (double)(nBits & 0x00ffffff);
+        while (nShift < 29) { dDiff *= 256.0; nShift++; }
+        while (nShift > 29) { dDiff /= 256.0; nShift--; }
+
+        if (nWeight > 0) {
+            // A stake is attempted once per timestamp slot and succeeds with
+            // probability weight*target/2^256, so the wait is the reciprocal.
+            // Dividing the maximum by the target FIRST keeps the intermediate
+            // inside 256 bits; multiplying target by weight would not.
+            arith_uint256 bnTarget;
+            bool fNegative, fOverflow;
+            bnTarget.SetCompact(nBits, &fNegative, &fOverflow);
+            if (!fNegative && !fOverflow && bnTarget != 0) {
+                arith_uint256 bnSlots = (~arith_uint256(0) / bnTarget) / arith_uint256(nWeight);
+                const int64_t nSlotSeconds = consensus.nStakeTimestampMask + 1;
+                nExpected = (bnSlots.bits() > 40) ? -1 : (int64_t)bnSlots.GetLow64() * nSlotSeconds;
+            }
+        }
+    }
+
+    UniValue obj(UniValue::VOBJ);
+    obj.push_back(Pair("enabled", fEnabled));
+    obj.push_back(Pair("staking", fStaking));
+    obj.push_back(Pair("status", strStatus));
+    obj.push_back(Pair("weight", nWeight));
+    obj.push_back(Pair("eligible_outputs", nOutputs));
+    obj.push_back(Pair("eligible_balance", ValueFromAmount(nEligible)));
+    obj.push_back(Pair("difficulty", dDiff));
+    obj.push_back(Pair("expected_time", nExpected));
+    obj.push_back(Pair("min_amount", ValueFromAmount(consensus.nStakeMinAmount)));
+    obj.push_back(Pair("min_confirmations", consensus.nStakeMinConfirmations));
+    obj.push_back(Pair("fork_height", consensus.nPoSForkHeight));
+    return obj;
+}
+
 UniValue getwalletinfo(const JSONRPCRequest& request)
 {
     CWallet * const pwallet = GetWalletForJSONRPCRequest(request);
@@ -3033,6 +3148,7 @@ static const CRPCCommand commands[] =
     { "wallet",             "gettransaction",           &gettransaction,           false,  {"txid","include_watchonly"} },
     { "wallet",             "getunconfirmedbalance",    &getunconfirmedbalance,    false,  {} },
     { "wallet",             "getwalletinfo",            &getwalletinfo,            false,  {} },
+    { "wallet",             "getstakinginfo",           &getstakinginfo,           false,  {} },
     { "wallet",             "importmulti",              &importmulti,              true,   {"requests","options"} },
     { "wallet",             "importprivkey",            &importprivkey,            true,   {"privkey","label","rescan"} },
     { "wallet",             "importwallet",             &importwallet,             true,   {"filename"} },
