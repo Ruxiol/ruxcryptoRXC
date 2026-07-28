@@ -38,6 +38,13 @@ define $(package)_set_vars
   $(package)_config_opts_armv7l+= -DWSIZE=32
   $(package)_config_opts_debug=-DDEBUG=ON -DCMAKE_BUILD_TYPE=Debug
 
+  # config_cmds below exports CFLAGS as "$(cflags) $(cppflags)", and cmake takes
+  # that into CMAKE_C_FLAGS for every target -- including relic_s, which is the
+  # one that cannot find <gmp.h>. Adding it to relic's CMakeLists was not enough:
+  # whatever relic does with its own include directories, they do not reach that
+  # target.
+  $(package)_cppflags_mingw32+= -I$(host_prefix)/include
+
   ifneq ($(darwin_native_toolchain),)
     $(package)_config_opts_darwin+= -DCMAKE_AR="$(host_prefix)/native/bin/$($(package)_ar)"
     $(package)_config_opts_darwin+= -DCMAKE_RANLIB="$(host_prefix)/native/bin/$($(package)_ranlib)"
