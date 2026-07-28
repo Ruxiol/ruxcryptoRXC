@@ -664,6 +664,20 @@ bool AcceptToMemoryPoolWorker(CTxMemPool& pool, CValidationState& state, const C
     if (tx.IsCoinBase())
         return state.DoS(100, false, REJECT_INVALID, "coinbase");
 
+    // Neither is a coinstake, and for sharper reasons.
+    //
+    // A coinstake is valid only as vtx[1] of a proof-of-stake block. Loose in
+    // the mempool it can never confirm, yet it holds the staker's outputs as
+    // spent -- so a single disconnected stake silently ends that wallet's
+    // staking, permanently. That is how this was found: weight fell to zero and
+    // stayed there while six coinstakes sat in the mempool.
+    //
+    // The quieter half is worse. A coinstake in the mempool can be selected into
+    // an ordinary block by the miner's fee sorting, and if it lands at index 1
+    // that block reads as proof-of-stake to every node on the network.
+    if (tx.IsCoinStake())
+        return state.DoS(100, false, REJECT_INVALID, "coinstake");
+
     // Rather not work on nonstandard transactions (unless -testnet/-regtest)
     std::string reason;
     if (fRequireStandard && !IsStandardTx(tx, reason))
@@ -3478,6 +3492,15 @@ bool ContextualCheckBlock(const CBlock& block, CValidationState& state, const Co
 
         if (!CheckBlockSignature(block))
             return state.DoS(100, false, REJECT_INVALID, "bad-blocksig", false, "block signature verification failed");
+
+        // A coinstake belongs at index 1 and nowhere else. Only vtx[1] is ever
+        // checked for value-neutrality or against the kernel, so one sitting
+        // further down the block would be carrying the shape of a proof without
+        // any of the checks that make it one.
+        for (size_t i = 2; i < block.vtx.size(); i++) {
+            if (block.vtx[i]->IsCoinStake())
+                return state.DoS(100, false, REJECT_INVALID, "bad-cs-position", false, "coinstake outside index 1");
+        }
     }
 
     // Start enforcing BIP113 (Median Time Past) using versionbits logic.
