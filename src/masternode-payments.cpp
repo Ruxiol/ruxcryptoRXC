@@ -371,7 +371,7 @@ bool CMasternodePayments::IsScheduled(const CDeterministicMNCPtr& dmnIn, int nNo
     // on a large network and stops swallowing every candidate on a small one.
     // Only the PrivateSend client calls this; validation never does, so no rule
     // the chain agrees on is touched.
-    int nCount = std::min(8, mnList.GetValidMNsCount() / 3);
+    int nCount = std::min(8, (int)mnList.GetValidMNsCount() / 3);
     if (nCount <= 0) {
         return false;
     }
