@@ -3,6 +3,7 @@
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
+#include <algorithm>
 #include "activemasternode.h"
 #include "consensus/validation.h"
 #include "governance-classes.h"
@@ -357,7 +358,25 @@ bool CMasternodePayments::GetBlockTxOuts(int nBlockHeight, CAmount blockReward, 
 // -- Only look ahead up to 8 blocks to allow for propagation of the latest 2 blocks of votes
 bool CMasternodePayments::IsScheduled(const CDeterministicMNCPtr& dmnIn, int nNotBlockHeight) const
 {
-    auto projectedPayees = deterministicMNManager->GetListAtChainTip().GetProjectedMNPayees(8);
+    auto mnList = deterministicMNManager->GetListAtChainTip();
+
+    // Eight is a fair look-ahead on a network with hundreds of masternodes: it
+    // keeps mixing away from the few about to be paid. On a small one it is the
+    // entire list -- GetProjectedMNPayees clamps nCount to the masternode count
+    // -- so every candidate comes back "scheduled", the client exhausts its
+    // tries, and mixing reports "No compatible Masternode found" forever. Below
+    // nine masternodes it could never begin at all.
+    //
+    // Look ahead over at most a third of the list. The rule keeps its meaning
+    // on a large network and stops swallowing every candidate on a small one.
+    // Only the PrivateSend client calls this; validation never does, so no rule
+    // the chain agrees on is touched.
+    int nCount = std::min(8, mnList.GetValidMNsCount() / 3);
+    if (nCount <= 0) {
+        return false;
+    }
+
+    auto projectedPayees = mnList.GetProjectedMNPayees(nCount);
     for (const auto &dmn : projectedPayees) {
         if (dmn->proTxHash == dmnIn->proTxHash) {
             return true;

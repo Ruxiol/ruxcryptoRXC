@@ -952,6 +952,12 @@ public:
         fAllowMultiplePorts = true;
 
         nFulfilledRequestExpireTime = 5*60; // fulfilled requests expire in 5 minutes
+        // Never set for regtest, so it was reading whatever happened to be in
+        // that memory -- mixing needed an unpredictable number of participants,
+        // and often an impossible one. Two is enough to prove the machinery on
+        // a test chain.
+        nPoolMinParticipants = 2;
+        nPoolMaxParticipants = 5;
 
         // privKey: 7KqCuTcxVTdc8FEjFSiFr7KucgqocWBRnVGFWLSWmtrZ8FKh4Hv
         vSporkAddresses = {"RKA9cfhAgVd8Umwd9gtJEx6Uj34aX6oN8v"};
