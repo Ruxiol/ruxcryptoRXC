@@ -1210,10 +1210,11 @@ CAmount GetMNCollateralAmount(int nHeight)
     // Same rule as above: the raised collateral only applies to registrations
     // made at or after the fork height. Historical ProRegTx used 1000 and must
     // continue to validate.
-    if (nHeight >= Params().GetConsensus().nPoSForkHeight) {
-        return 10000 * COIN;
+    const Consensus::Params& consensus = Params().GetConsensus();
+    if (nHeight >= consensus.nPoSForkHeight) {
+        return consensus.nMNCollateralPostFork;
     }
-    return 1000 * COIN;
+    return consensus.nMNCollateral;
 }
 
 bool IsInitialBlockDownload()

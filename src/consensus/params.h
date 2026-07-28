@@ -178,6 +178,15 @@ struct Params {
      */
     int64_t nStakeMinAmount;
     /**
+     * Masternode collateral, before and from nPoSForkHeight on.
+     *
+     * These validate history -- a ProRegTx is checked against the size in force
+     * at the height it was registered -- so they belong here beside the other
+     * height-gated consensus values rather than hardcoded in validation.
+     */
+    int64_t nMNCollateral;
+    int64_t nMNCollateralPostFork;
+    /**
      * How many confirmations an output needs before it may stake. Its job is to
      * stop a coin from immediately re-staking the reward it just won, which
      * would otherwise let one holder chain wins together.

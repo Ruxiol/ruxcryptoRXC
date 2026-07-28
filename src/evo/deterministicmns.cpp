@@ -945,7 +945,9 @@ bool CDeterministicMNManager::IsProTxWithCollateral(const CTransactionRef& tx, u
     // Wallet-side helper (keeps the wallet from spending a masternode collateral),
     // not consensus — so it simply recognises both the pre- and post-fork sizes
     // rather than needing a block height.
-    if (tx->vout[n].nValue != 1000 * COIN && tx->vout[n].nValue != 10000 * COIN) {
+    const Consensus::Params& mnConsensus = Params().GetConsensus();
+    if (tx->vout[n].nValue != mnConsensus.nMNCollateral &&
+        tx->vout[n].nValue != mnConsensus.nMNCollateralPostFork) {
         return false;
     }
     return true;

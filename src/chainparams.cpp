@@ -269,6 +269,8 @@ public:
         consensus.nPoSForkHeight = 350000;   // PoS aktivan (hibrid) + reset MN liste + kolateral 10k + podjela 70/30
         consensus.nPoWDisableHeight = 375000; // kraj hibrida: od ove visine samo PoS blokovi
         consensus.nStakeMinAmount = 10000 * COIN;  // isto kao MN kolateral
+        consensus.nMNCollateral = 1000 * COIN;
+        consensus.nMNCollateralPostFork = 10000 * COIN;
         consensus.nStakeMinConfirmations = 250;    // ~8h na 2-minutnim blokovima
         consensus.nStakeTimestampMask = 15;        // stake vrijeme na 16 sekundi
         consensus.nPowTargetSpacingPostFork = 2 * 60;  // 5min -> 2min od H
@@ -470,6 +472,8 @@ public:
         consensus.nPoSForkHeight = 999999;   // testnet: postaviti pri testiranju forka
         consensus.nPoWDisableHeight = 999999; // testnet
         consensus.nStakeMinAmount = 10000 * COIN;
+        consensus.nMNCollateral = 1000 * COIN;
+        consensus.nMNCollateralPostFork = 10000 * COIN;
         consensus.nStakeMinConfirmations = 250;
         consensus.nStakeTimestampMask = 15;
         consensus.nPowTargetSpacingPostFork = 2 * 60;
@@ -655,6 +659,8 @@ public:
         consensus.nPoSForkHeight = 999999;   // devnet
         consensus.nPoWDisableHeight = 999999; // devnet
         consensus.nStakeMinAmount = 10000 * COIN;
+        consensus.nMNCollateral = 1000 * COIN;
+        consensus.nMNCollateralPostFork = 10000 * COIN;
         consensus.nStakeMinConfirmations = 250;
         consensus.nStakeTimestampMask = 15;
         consensus.nPowTargetSpacingPostFork = 2 * 60;
@@ -854,6 +860,8 @@ public:
         consensus.nPoSForkHeight = 200;   // regtest: namjerno nisko da se fork moze testirati
         consensus.nPoWDisableHeight = 300; // regtest
         consensus.nStakeMinAmount = 100 * COIN;    // regtest: sitno, da testovi budu jeftini
+        consensus.nMNCollateral = 100 * COIN;
+        consensus.nMNCollateralPostFork = 1000 * COIN;
         consensus.nStakeMinConfirmations = 1;      // regtest: bez cekanja
         consensus.nStakeTimestampMask = 15;
         consensus.nPowTargetSpacingPostFork = 2 * 60;

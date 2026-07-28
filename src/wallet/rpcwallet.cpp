@@ -2577,6 +2577,7 @@ UniValue getstakinginfo(const JSONRPCRequest& request)
             "  \"difficulty\": n,             (numeric) current proof-of-stake difficulty\n"
             "  \"expected_time\": n,          (numeric) rough seconds until this wallet stakes\n"
             "  \"min_amount\": n,             (numeric) smallest output that may stake\n"
+            "  \"mn_collateral\": n,          (numeric) masternode collateral at the next block\n"
             "  \"min_confirmations\": n,      (numeric) confirmations an output needs first\n"
             "  \"fork_height\": n             (numeric) height staking begins at\n"
             "}\n"
@@ -2598,6 +2599,7 @@ UniValue getstakinginfo(const JSONRPCRequest& request)
     obj.push_back(Pair("difficulty", st.difficulty));
     obj.push_back(Pair("expected_time", st.expectedSeconds));
     obj.push_back(Pair("min_amount", ValueFromAmount(consensus.nStakeMinAmount)));
+    obj.push_back(Pair("mn_collateral", ValueFromAmount(GetMNCollateralAmount(chainActive.Height() + 1))));
     obj.push_back(Pair("min_confirmations", consensus.nStakeMinConfirmations));
     obj.push_back(Pair("fork_height", consensus.nPoSForkHeight));
     return obj;
