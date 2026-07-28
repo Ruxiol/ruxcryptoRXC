@@ -225,4 +225,15 @@ private:
 void IncrementExtraNonce(CBlock* pblock, const CBlockIndex* pindexPrev, unsigned int& nExtraNonce);
 int64_t UpdateTime(CBlockHeader* pblock, const Consensus::Params& consensusParams, const CBlockIndex* pindexPrev);
 
+static const bool DEFAULT_STAKING = true;
+
+/**
+ * The staking loop.
+ *
+ * Where a miner would spin, this waits. Stake timestamps sit on a 16-second
+ * grid, so there is exactly one attempt per grid slot no matter how fast the
+ * loop runs -- burning CPU between slots would buy nothing at all.
+ */
+void ThreadStakeMinter(CWallet* pwallet);
+
 #endif // BITCOIN_MINER_H

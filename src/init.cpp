@@ -2126,8 +2126,15 @@ bool AppInitMain(boost::thread_group& threadGroup, CScheduler& scheduler)
     uiInterface.InitMessage(_("Done loading"));
 
 #ifdef ENABLE_WALLET
-    if (pwalletMain)
+    if (pwalletMain) {
         pwalletMain->postInitProcess(scheduler);
+
+        // The staking loop does nothing until nPoSForkHeight, so starting it now
+        // costs a sleeping thread and saves everyone a restart at the fork.
+        if (GetBoolArg("-staking", DEFAULT_STAKING)) {
+            threadGroup.create_thread(boost::bind(&ThreadStakeMinter, pwalletMain));
+        }
+    }
 #endif
 
     threadGroup.create_thread(boost::bind(&ThreadSendAlert, boost::ref(connman)));

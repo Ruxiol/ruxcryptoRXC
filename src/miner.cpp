@@ -29,6 +29,7 @@
 #include "masternode-payments.h"
 #include "masternode-sync.h"
 #include "validationinterface.h"
+#include "wallet/wallet.h"
 
 #include "evo/specialtx.h"
 #include "evo/cbtx.h"
@@ -559,4 +560,99 @@ void IncrementExtraNonce(CBlock* pblock, const CBlockIndex* pindexPrev, unsigned
 
     pblock->vtx[0] = MakeTransactionRef(std::move(txCoinbase));
     pblock->hashMerkleRoot = BlockMerkleRoot(*pblock);
+}
+
+void ThreadStakeMinter(CWallet* pwallet)
+{
+    RenameThread("ruxcrypto-stake");
+    LogPrintf("ThreadStakeMinter -- started\n");
+
+    const CChainParams& chainparams = Params();
+    const Consensus::Params& consensus = chainparams.GetConsensus();
+    uint32_t nLastAttempt = 0;
+
+    try {
+        while (true) {
+            boost::this_thread::interruption_point();
+
+            // Staking a block nobody will accept is worse than not staking: the
+            // stake is spent in the attempt and has to mature all over again.
+            // So wait for a chain worth building on.
+            if (pwallet->IsLocked() || IsInitialBlockDownload()) {
+                MilliSleep(10000);
+                continue;
+            }
+
+            CBlockIndex* pindexPrev = NULL;
+            {
+                LOCK(cs_main);
+                pindexPrev = chainActive.Tip();
+            }
+            if (!pindexPrev) {
+                MilliSleep(10000);
+                continue;
+            }
+
+            const int nHeight = pindexPrev->nHeight + 1;
+            if (!IsPoSEnabled(nHeight, consensus)) {
+                // Nothing to do until the fork. Check back rarely.
+                MilliSleep(30000);
+                continue;
+            }
+
+            // One attempt per grid slot. The kernel takes the timestamp as an
+            // input and the timestamp only moves in steps of sixteen seconds, so
+            // trying the same slot twice asks the identical question twice.
+            const uint32_t nTime = (uint32_t)GetAdjustedTime() & ~(uint32_t)consensus.nStakeTimestampMask;
+            if (nTime <= nLastAttempt) {
+                MilliSleep(1000);
+                continue;
+            }
+            nLastAttempt = nTime;
+
+            // The target this block would have to meet, asked for as a stake.
+            CBlockHeader header;
+            header.nTime = nTime;
+            unsigned int nBits;
+            {
+                LOCK(cs_main);
+                nBits = GetNextWorkRequired(pindexPrev, &header, consensus, true);
+            }
+
+            CMutableTransaction txCoinStake;
+            CKey stakeKey;
+            uint256 hashProofOfStake;
+            if (!pwallet->CreateCoinStake(nBits, nTime, pindexPrev->nStakeModifier, txCoinStake, stakeKey, hashProofOfStake)) {
+                continue;  // no luck this slot, which is the normal outcome
+            }
+
+            // Pay the reward back to the script that staked. It keeps a staker's
+            // coins together instead of scattering them across the keypool, and
+            // it needs no new key -- so staking cannot fail for want of one.
+            const CScript& scriptReward = txCoinStake.vout[1].scriptPubKey;
+
+            std::unique_ptr<CBlockTemplate> pblocktemplate;
+            try {
+                pblocktemplate = BlockAssembler(chainparams).CreateNewBlock(scriptReward, &txCoinStake, &stakeKey, nTime);
+            } catch (const std::runtime_error& e) {
+                LogPrintf("ThreadStakeMinter -- could not assemble the block: %s\n", e.what());
+                continue;
+            }
+            if (!pblocktemplate) {
+                continue;
+            }
+
+            std::shared_ptr<const CBlock> pblock = std::make_shared<const CBlock>(pblocktemplate->block);
+            LogPrintf("ThreadStakeMinter -- staked block %s at height %d\n", pblock->GetHash().ToString(), nHeight);
+
+            if (!ProcessNewBlock(chainparams, pblock, true, NULL)) {
+                LogPrintf("ThreadStakeMinter -- ProcessNewBlock rejected our own block\n");
+            }
+        }
+    } catch (const boost::thread_interrupted&) {
+        LogPrintf("ThreadStakeMinter -- terminated\n");
+        throw;
+    } catch (const std::runtime_error& e) {
+        LogPrintf("ThreadStakeMinter -- runtime error: %s\n", e.what());
+    }
 }
