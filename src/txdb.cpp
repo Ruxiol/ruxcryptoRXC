@@ -7,6 +7,7 @@
 
 #include "chainparams.h"
 #include "hash.h"
+#include "pos.h"
 #include "pow.h"
 #include "uint256.h"
 #include "ui_interface.h"
@@ -371,8 +372,15 @@ bool CBlockTreeDB::LoadBlockIndexGuts(boost::function<CBlockIndex*(const uint256
                 pindexNew->nNonce         = diskindex.nNonce;
                 pindexNew->nStatus        = diskindex.nStatus;
                 pindexNew->nTx            = diskindex.nTx;
+                // Without this the modifier chain would restart from zero on
+                // every node restart, and stakes computed against the real
+                // modifier would stop verifying.
+                pindexNew->nStakeModifier = diskindex.nStakeModifier;
 
-                if (!CheckProofOfWork(pindexNew->GetBlockHash(), pindexNew->nBits, Params().GetConsensus()))
+                // Proof-of-stake blocks carry no work. Checking for some here
+                // would leave a node unable to load the index it wrote itself.
+                if (!BlockIndexIsProofOfStake(pindexNew, Params().GetConsensus()) &&
+                    !CheckProofOfWork(pindexNew->GetBlockHash(), pindexNew->nBits, Params().GetConsensus()))
                     return error("%s: CheckProofOfWork failed: %s", __func__, pindexNew->ToString());
 
                 pcursor->Next();

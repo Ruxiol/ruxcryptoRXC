@@ -1094,8 +1094,15 @@ bool ReadBlockFromDisk(CBlock& block, const CDiskBlockPos& pos, const Consensus:
         return error("%s: Deserialize or I/O error - %s at %s", __func__, e.what(), pos.ToString());
     }
 
-    // Check the header
-    if (!CheckProofOfWork(block.GetHash(), block.nBits, consensusParams))
+    // Check the header.
+    //
+    // A proof-of-stake block has no work to check, and demanding some here is
+    // not a harmless extra: this runs on blocks we ourselves accepted and wrote,
+    // so a stake would come back as "Failed to read block", ActivateBestChain
+    // would give up, and the node would shut itself down with a fatal internal
+    // error. The stake's own proof is verified in ConnectBlock, where the coin
+    // it spends is available to check it against.
+    if (!block.IsProofOfStake() && !CheckProofOfWork(block.GetHash(), block.nBits, consensusParams))
         return error("ReadBlockFromDisk: Errors in block header at %s", pos.ToString());
 
     return true;
