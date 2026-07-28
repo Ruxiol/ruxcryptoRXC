@@ -2522,6 +2522,39 @@ UniValue setprivatesendamount(const JSONRPCRequest& request)
     return NullUniValue;
 }
 
+UniValue setstaking(const JSONRPCRequest& request)
+{
+    CWallet * const pwallet = GetWalletForJSONRPCRequest(request);
+    if (!EnsureWalletIsAvailable(pwallet, request.fHelp)) {
+        return NullUniValue;
+    }
+
+    if (request.fHelp || request.params.size() != 1)
+        throw std::runtime_error(
+            "setstaking true|false\n"
+            "\nTurn staking on or off for this run.\n"
+            "\nThe change does not survive a restart -- that belongs in the config\n"
+            "file, and rewriting it from under the operator is not this command's\n"
+            "business.\n"
+            "\nArguments:\n"
+            "1. staking    (boolean, required) whether to stake\n"
+            "\nResult:\n"
+            "{\n"
+            "  \"staking\": true|false     (boolean) the setting now in force\n"
+            "}\n"
+            "\nExamples:\n"
+            + HelpExampleCli("setstaking", "true")
+            + HelpExampleRpc("setstaking", "false")
+        );
+
+    const bool fEnable = request.params[0].get_bool();
+    ForceSetArg("-staking", fEnable ? "1" : "0");
+
+    UniValue obj(UniValue::VOBJ);
+    obj.push_back(Pair("staking", GetBoolArg("-staking", DEFAULT_STAKING)));
+    return obj;
+}
+
 UniValue getstakinginfo(const JSONRPCRequest& request)
 {
     CWallet * const pwallet = GetWalletForJSONRPCRequest(request);
@@ -3086,6 +3119,7 @@ static const CRPCCommand commands[] =
     { "wallet",             "getunconfirmedbalance",    &getunconfirmedbalance,    false,  {} },
     { "wallet",             "getwalletinfo",            &getwalletinfo,            false,  {} },
     { "wallet",             "getstakinginfo",           &getstakinginfo,           false,  {} },
+    { "wallet",             "setstaking",               &setstaking,               false,  {"staking"} },
     { "wallet",             "importmulti",              &importmulti,              true,   {"requests","options"} },
     { "wallet",             "importprivkey",            &importprivkey,            true,   {"privkey","label","rescan"} },
     { "wallet",             "importwallet",             &importwallet,             true,   {"filename"} },
