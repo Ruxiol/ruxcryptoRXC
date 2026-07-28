@@ -6,6 +6,13 @@ $(package)_sha256_hash=5275bb04f4863a13516b2f39392ac5e272f5e1bb8057b18aec1c9b79d
 
 define $(package)_set_vars
 $(package)_config_opts+=--enable-cxx --enable-fat --with-pic --disable-shared
+# gmp builds helper programs that have to RUN on the build machine, and with
+# nothing else set its configure reaches for $(CC) -- the cross compiler. It then
+# produces a Windows .exe it cannot execute and gives up with "Cannot determine
+# executable suffix", which is the whole mingw depends build stopping at the
+# first package. Name the native compiler explicitly.
+$(package)_config_opts+=CC_FOR_BUILD=gcc
+$(package)_config_opts+=CPP_FOR_BUILD="gcc -E"
 $(package)_cflags_armv7l_linux+=-march=armv7-a
 endef
 
