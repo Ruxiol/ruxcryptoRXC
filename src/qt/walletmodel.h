@@ -230,6 +230,9 @@ public:
 
     bool IsOldInstantSendEnabled() const;
 
+    /** The wallet itself, for the few panels that ask it a question directly. */
+    CWallet *getWallet() const { return wallet; }
+
 private:
     CWallet *wallet;
     bool fHaveWatchOnly;

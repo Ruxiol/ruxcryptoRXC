@@ -640,6 +640,173 @@
         </widget>
        </item>
        <item>
+        <widget class="QFrame" name="frameStaking">
+         <property name="frameShape">
+          <enum>QFrame::StyledPanel</enum>
+         </property>
+         <property name="frameShadow">
+          <enum>QFrame::Raised</enum>
+         </property>
+         <layout class="QVBoxLayout" name="verticalLayoutStaking">
+          <item>
+           <widget class="QLabel" name="labelStakingHeader">
+            <property name="font">
+             <font>
+              <weight>75</weight>
+              <bold>true</bold>
+             </font>
+            </property>
+            <property name="text">
+             <string>Staking</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <layout class="QHBoxLayout" name="hl_labelStakingStatus">
+            <item>
+             <widget class="QLabel" name="labelStakingStatusText">
+              <property name="text">
+               <string>Status:</string>
+              </property>
+              <property name="toolTip">
+               <string>Whether this wallet is currently staking, and if not, why not.</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QLabel" name="labelStakingStatus">
+              <property name="font">
+               <font>
+                <weight>75</weight>
+                <bold>true</bold>
+               </font>
+              </property>
+              <property name="text">
+               <string notr="true">n/a</string>
+              </property>
+              <property name="alignment">
+               <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+              </property>
+              <property name="textInteractionFlags">
+               <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </item>
+          <item>
+           <layout class="QHBoxLayout" name="hl_labelStakingWeight">
+            <item>
+             <widget class="QLabel" name="labelStakingWeightText">
+              <property name="text">
+               <string>Weight:</string>
+              </property>
+              <property name="toolTip">
+               <string>Your staking weight, in whole coins. Chance of finding a block is proportional to it.</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QLabel" name="labelStakingWeight">
+              <property name="font">
+               <font>
+                <weight>75</weight>
+                <bold>true</bold>
+               </font>
+              </property>
+              <property name="text">
+               <string notr="true">0</string>
+              </property>
+              <property name="alignment">
+               <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+              </property>
+              <property name="textInteractionFlags">
+               <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </item>
+          <item>
+           <layout class="QHBoxLayout" name="hl_labelStakingEligible">
+            <item>
+             <widget class="QLabel" name="labelStakingEligibleText">
+              <property name="text">
+               <string>Eligible:</string>
+              </property>
+              <property name="toolTip">
+               <string>Coins large enough and confirmed long enough to stake. Everything else is idle.</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QLabel" name="labelStakingEligible">
+              <property name="font">
+               <font>
+                <weight>75</weight>
+                <bold>true</bold>
+               </font>
+              </property>
+              <property name="text">
+               <string notr="true">0.00 RXC</string>
+              </property>
+              <property name="alignment">
+               <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+              </property>
+              <property name="textInteractionFlags">
+               <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </item>
+          <item>
+           <layout class="QHBoxLayout" name="hl_labelStakingExpected">
+            <item>
+             <widget class="QLabel" name="labelStakingExpectedText">
+              <property name="text">
+               <string>Expected time:</string>
+              </property>
+              <property name="toolTip">
+               <string>Rough average wait until this wallet stakes a block. It is an average, not a schedule.</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QLabel" name="labelStakingExpected">
+              <property name="font">
+               <font>
+                <weight>75</weight>
+                <bold>true</bold>
+               </font>
+              </property>
+              <property name="text">
+               <string notr="true">n/a</string>
+              </property>
+              <property name="alignment">
+               <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+              </property>
+              <property name="textInteractionFlags">
+               <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </item>
+          <item>
+           <widget class="QPushButton" name="toggleStaking">
+            <property name="toolTip">
+             <string>Start or stop staking. Staking needs an unlocked wallet.</string>
+            </property>
+            <property name="text">
+             <string>Start Staking</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+       </item>
+       <item>
         <spacer name="verticalSpacer">
          <property name="orientation">
           <enum>Qt::Vertical</enum>

@@ -954,6 +954,26 @@ public:
     void ReacceptWalletTransactions();
     void ResendWalletTransactions(int64_t nBestBlockTime, CConnman* connman) override;
     std::vector<uint256> ResendWalletTransactionsBefore(int64_t nTime, CConnman* connman);
+    /**
+     * What the wallet can tell a user about staking.
+     *
+     * One source for the RPC and the GUI. Two implementations of "can I stake"
+     * would eventually disagree, and the one the user is looking at would be
+     * the wrong one.
+     */
+    struct StakingStatus
+    {
+        bool enabled = false;          //!< -staking is on
+        bool staking = false;          //!< and nothing is actually in the way
+        std::string status;            //!< what IS in the way, in plain words
+        int64_t weight = 0;            //!< staking weight, whole coins
+        int eligibleOutputs = 0;       //!< outputs big enough and old enough
+        CAmount eligibleBalance = 0;   //!< their total
+        double difficulty = 0;         //!< the STAKE difficulty, not the tip's
+        int64_t expectedSeconds = -1;  //!< rough wait, -1 when unknowable
+    };
+    StakingStatus GetStakingStatus();
+
     CAmount GetBalance() const;
     CAmount GetUnconfirmedBalance() const;
     CAmount GetImmatureBalance() const;

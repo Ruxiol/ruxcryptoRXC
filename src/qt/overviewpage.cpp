@@ -17,6 +17,10 @@
 #include "transactiontablemodel.h"
 #include "utilitydialog.h"
 #include "walletmodel.h"
+#include "wallet/wallet.h"
+#include "util.h"
+#include "miner.h"
+
 
 #include "instantx.h"
 #include "masternode-sync.h"
@@ -123,6 +127,7 @@ public:
 OverviewPage::OverviewPage(const PlatformStyle *platformStyle, QWidget *parent) :
     QWidget(parent),
     timer(nullptr),
+    stakingTimer(nullptr),
     ui(new Ui::OverviewPage),
     clientModel(0),
     walletModel(0),
@@ -274,6 +279,15 @@ void OverviewPage::setClientModel(ClientModel *model)
 
 void OverviewPage::setWalletModel(WalletModel *model)
 {
+    // Staking panel. Two seconds is plenty: nothing here moves faster than a
+    // block, and the query walks the wallet's outputs.
+    if (!stakingTimer) {
+        stakingTimer = new QTimer(this);
+        connect(stakingTimer, SIGNAL(timeout()), this, SLOT(stakingStatus()));
+        stakingTimer->start(2000);
+        connect(ui->toggleStaking, SIGNAL(clicked()), this, SLOT(toggleStaking()));
+    }
+
     this->walletModel = model;
     if(model && model->getOptionsModel())
     {
@@ -671,4 +685,40 @@ void OverviewPage::DisablePrivateSendCompletely() {
         ui->labelPrivateSendEnabled->setText("<span style='color:red;'>(" + tr("Disabled") + ")</span>");
     }
     privateSendClient.fEnablePrivateSend = false;
+}
+
+void OverviewPage::stakingStatus()
+{
+    if (!walletModel || !walletModel->getWallet())
+        return;
+
+    const CWallet::StakingStatus st = walletModel->getWallet()->GetStakingStatus();
+
+    ui->labelStakingStatus->setText(QString::fromStdString(st.status));
+    // Green only when it is genuinely staking. A staker glancing at this should
+    // be able to tell at a distance whether anything is happening.
+    ui->labelStakingStatus->setStyleSheet(st.staking ? "QLabel { color: green; }"
+                                                     : "QLabel { color: grey; }");
+
+    ui->labelStakingWeight->setText(QString::number(st.weight));
+    ui->labelStakingEligible->setText(BitcoinUnits::formatWithUnit(
+        walletModel->getOptionsModel()->getDisplayUnit(), st.eligibleBalance, false, BitcoinUnits::separatorAlways));
+
+    if (!st.staking || st.expectedSeconds < 0) {
+        ui->labelStakingExpected->setText(tr("n/a"));
+    } else {
+        ui->labelStakingExpected->setText(GUIUtil::formatDurationStr(st.expectedSeconds));
+    }
+
+    ui->toggleStaking->setText(st.enabled ? tr("Stop Staking") : tr("Start Staking"));
+}
+
+void OverviewPage::toggleStaking()
+{
+    // Only for this run. Making it stick belongs in the config file, and quietly
+    // rewriting that from a button press is not something to do behind the
+    // user's back.
+    const bool fWasEnabled = GetBoolArg("-staking", DEFAULT_STAKING);
+    ForceSetArg("-staking", fWasEnabled ? "0" : "1");
+    stakingStatus();
 }

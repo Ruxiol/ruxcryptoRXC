@@ -39,6 +39,10 @@ public:
 
 public Q_SLOTS:
     void privateSendStatus();
+    /** Refresh the staking panel from CWallet::GetStakingStatus(). */
+    void stakingStatus();
+    /** Turn staking on or off for this run. */
+    void toggleStaking();
     void setBalance(const CAmount& balance, const CAmount& unconfirmedBalance, const CAmount& immatureBalance, const CAmount& anonymizedBalance,
                     const CAmount& watchOnlyBalance, const CAmount& watchUnconfBalance, const CAmount& watchImmatureBalance);
 
@@ -48,6 +52,7 @@ Q_SIGNALS:
 
 private:
     QTimer *timer;
+    QTimer *stakingTimer;
     Ui::OverviewPage *ui;
     ClientModel *clientModel;
     WalletModel *walletModel;

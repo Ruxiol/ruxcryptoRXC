@@ -3236,6 +3236,75 @@ bool CWallet::HasCollateralInputs(bool fOnlyConfirmed) const
     return !vCoins.empty();
 }
 
+CWallet::StakingStatus CWallet::GetStakingStatus()
+{
+    LOCK2(cs_main, cs_wallet);
+
+    const Consensus::Params& consensus = Params().GetConsensus();
+    StakingStatus ret;
+    ret.enabled = GetBoolArg("-staking", DEFAULT_STAKING);
+
+    // Counted through the same filter the staking loop applies, so this is what
+    // could genuinely stake rather than simply what the wallet holds.
+    std::vector<COutput> vCoins;
+    AvailableCoins(vCoins, true);
+    for (const COutput& out : vCoins) {
+        if (!out.fSpendable || out.nDepth < consensus.nStakeMinConfirmations)
+            continue;
+        const CTxOut& txout = out.tx->tx->vout[out.i];
+        if (txout.nValue < consensus.nStakeMinAmount)
+            continue;
+        ret.eligibleBalance += txout.nValue;
+        ret.eligibleOutputs++;
+    }
+    ret.weight = ret.eligibleBalance / COIN;
+
+    const int nHeight = chainActive.Height() + 1;
+    if (!ret.enabled)
+        ret.status = _("Staking is switched off");
+    else if (!IsPoSEnabled(nHeight, consensus))
+        ret.status = strprintf(_("Staking begins at block %d"), consensus.nPoSForkHeight);
+    else if (IsLocked())
+        ret.status = _("Wallet is locked");
+    else if (IsInitialBlockDownload())
+        ret.status = _("Still syncing");
+    else if (ret.eligibleOutputs == 0)
+        ret.status = strprintf(_("Needs a single output of %s or more, %d blocks old"),
+                               FormatMoney(consensus.nStakeMinAmount), consensus.nStakeMinConfirmations);
+    else {
+        ret.status = _("Staking");
+        ret.staking = true;
+    }
+
+    if (chainActive.Tip()) {
+        CBlockHeader header;
+        header.nTime = GetAdjustedTime();
+        const unsigned int nBits = GetNextWorkRequired(chainActive.Tip(), &header, consensus, true);
+
+        int nShift = (nBits >> 24) & 0xff;
+        ret.difficulty = (double)0x0000ffff / (double)(nBits & 0x00ffffff);
+        while (nShift < 29) { ret.difficulty *= 256.0; nShift++; }
+        while (nShift > 29) { ret.difficulty /= 256.0; nShift--; }
+
+        if (ret.weight > 0) {
+            // One attempt per timestamp slot, succeeding with probability
+            // weight*target/2^256, so the wait is the reciprocal. Divide the
+            // maximum by the target BEFORE dividing by weight: multiplying
+            // target by weight would run past 256 bits and wrap.
+            arith_uint256 bnTarget;
+            bool fNegative, fOverflow;
+            bnTarget.SetCompact(nBits, &fNegative, &fOverflow);
+            if (!fNegative && !fOverflow && bnTarget != 0) {
+                arith_uint256 bnSlots = (~arith_uint256(0) / bnTarget) / arith_uint256(ret.weight);
+                if (bnSlots.bits() <= 40)
+                    ret.expectedSeconds = (int64_t)bnSlots.GetLow64() * (consensus.nStakeTimestampMask + 1);
+            }
+        }
+    }
+
+    return ret;
+}
+
 bool CWallet::CreateCoinStake(unsigned int nBits, uint32_t nTime, const uint256& nStakeModifier,
                               CMutableTransaction& txCoinStake, CKey& keyOut, uint256& hashProofOfStake)
 {
