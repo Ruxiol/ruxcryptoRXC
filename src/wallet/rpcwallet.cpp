@@ -1456,6 +1456,45 @@ void ListTransactions(CWallet * const pwallet, const CWalletTx& wtx, const std::
     bool fAllAccounts = (strAccount == std::string("*"));
     bool involvesWatchonly = wtx.IsFromMe(ISMINE_WATCH_ONLY);
 
+    // A coinstake is one event, not three.
+    //
+    // Staking spends the staked output and immediately recreates it, so
+    // GetAmounts reports a send, a matching receive, and the empty marker
+    // output -- three rows that read like money leaving the wallet and coming
+    // back, for every block won. The stake itself is value-neutral; the reward
+    // arrives separately, in that block's coinbase. So report it as what it is.
+    if (wtx.tx->IsCoinStake()) {
+        if (!fAllAccounts && strAccount != strSentAccount) {
+            return;
+        }
+        CAmount nReturned = 0;
+        for (const COutputEntry& r : listReceived) {
+            nReturned += r.amount;
+        }
+        CAmount nSpent = 0;
+        for (const COutputEntry& sOut : listSent) {
+            nSpent += sOut.amount;
+        }
+
+        UniValue entry(UniValue::VOBJ);
+        if (involvesWatchonly) {
+            entry.push_back(Pair("involvesWatchonly", true));
+        }
+        entry.push_back(Pair("account", strSentAccount));
+        if (!listReceived.empty()) {
+            MaybePushAddress(entry, listReceived.front().destination);
+        }
+        entry.push_back(Pair("category", "stake"));
+        // Net effect on the balance -- zero for a well-formed coinstake.
+        entry.push_back(Pair("amount", ValueFromAmount(nReturned - nSpent)));
+        // What was put at stake, which is the number a staker actually wants.
+        entry.push_back(Pair("staked", ValueFromAmount(nReturned)));
+        if (fLong)
+            WalletTxToJSON(wtx, entry);
+        ret.push_back(entry);
+        return;
+    }
+
     // Sent
     if ((!listSent.empty() || nFee != 0) && (fAllAccounts || strAccount == strSentAccount))
     {
@@ -2578,6 +2617,7 @@ UniValue getstakinginfo(const JSONRPCRequest& request)
             "  \"expected_time\": n,          (numeric) rough seconds until this wallet stakes\n"
             "  \"min_amount\": n,             (numeric) smallest output that may stake\n"
             "  \"mn_collateral\": n,          (numeric) masternode collateral at the next block\n"
+            "  \"mn_min_confirmations\": n,   (numeric) confirmations a collateral needs\n"
             "  \"min_confirmations\": n,      (numeric) confirmations an output needs first\n"
             "  \"fork_height\": n             (numeric) height staking begins at\n"
             "}\n"
@@ -2600,6 +2640,7 @@ UniValue getstakinginfo(const JSONRPCRequest& request)
     obj.push_back(Pair("expected_time", st.expectedSeconds));
     obj.push_back(Pair("min_amount", ValueFromAmount(consensus.nStakeMinAmount)));
     obj.push_back(Pair("mn_collateral", ValueFromAmount(GetMNCollateralAmount(chainActive.Height() + 1))));
+    obj.push_back(Pair("mn_min_confirmations", consensus.nMasternodeMinimumConfirmations));
     obj.push_back(Pair("min_confirmations", consensus.nStakeMinConfirmations));
     obj.push_back(Pair("fork_height", consensus.nPoSForkHeight));
     return obj;
