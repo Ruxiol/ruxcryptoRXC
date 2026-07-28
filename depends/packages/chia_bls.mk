@@ -7,9 +7,20 @@ $(package)_sha256_hash=b3ec74a77a7b6795f84b05e051a0824ef8d9e05b04b2993f01040f356
 $(package)_dependencies=gmp
 #$(package)_patches=...TODO (when we switch back to https://github.com/Chia-Network/bls-signatures)
 
-#define $(package)_preprocess_cmds
 #  for i in $($(package)_patches); do patch -N -p1 < $($(package)_patch_dir)/$$$$i; done
-#endef
+
+# relic's bundled CMake finds gmp, reports "Configured GMP", and still does not
+# put the header on the compiler's search path when cross-compiling -- relic_err.c
+# stops at <gmp.h>. Passing -DGMP_INCLUDE_DIR is no use either: cmake/gmp.cmake
+# opens by unsetting exactly that variable from the cache before searching.
+#
+# Rather than keep guessing at which cmake variable survives, the include path is
+# written into relic's own CMakeLists, after the cmake_minimum_required block.
+# A native build never needed this because the system libgmp-dev header was there
+# to be found; for Windows there is no system gmp.
+define $(package)_preprocess_cmds
+  sed -i.bak '5i include_directories($(host_prefix)/include)' contrib/relic/CMakeLists.txt
+endef
 
 define $(package)_set_vars
   $(package)_config_opts=-DCMAKE_INSTALL_PREFIX=$($(package)_staging_dir)/$(host_prefix)
