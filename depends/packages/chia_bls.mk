@@ -9,6 +9,23 @@ $(package)_dependencies=gmp
 
 #  for i in $($(package)_patches); do patch -N -p1 < $($(package)_patch_dir)/$$$$i; done
 
+# Put the gmp headers where relic will actually look.
+#
+# relic cannot be told about them from outside. It rebuilds CMAKE_C_FLAGS from
+# scratch at its CMakeLists:373, discarding -DCMAKE_C_FLAGS and the exported
+# CFLAGS alike; it shadows the CFLAGS cmake variable that line reads; and its
+# src/ does not inherit include_directories() from the parent -- the generated
+# includes_C.rsp lists relic's own three paths and nothing else. Each of those
+# was tried and none of them reaches relic_s.
+#
+# Those three paths ARE on the search path, so the header goes into one of them.
+# Inelegant, but it is the one placement that does not depend on relic's flag
+# handling, and it is confined to the cross build. A native build never needed
+# any of this, because libgmp-dev leaves gmp.h in /usr/include.
+define $(package)_preprocess_cmds
+  cp $(host_prefix)/include/gmp.h contrib/relic/include/
+endef
+
 
 define $(package)_set_vars
   $(package)_config_opts=-DCMAKE_INSTALL_PREFIX=$($(package)_staging_dir)/$(host_prefix)
@@ -23,15 +40,6 @@ define $(package)_set_vars
   $(package)_config_opts_armv7l+= -DWSIZE=32
   $(package)_config_opts_debug=-DDEBUG=ON -DCMAKE_BUILD_TYPE=Debug
 
-  # relic rebuilds CMAKE_C_FLAGS from scratch at CMakeLists:373 --
-  #   set(CMAKE_C_FLAGS "-pipe -std=c99 ${AFLAGS} ${WFLAGS} ${DFLAGS} ${PFLAGS} ${CFLAGS}")
-  # -- so anything handed to cmake as CMAKE_C_FLAGS or through the CFLAGS
-  # environment is discarded, and its src/ directory does not inherit
-  # include_directories() either: the generated includes_C.rsp lists only
-  # relic's own three paths. That ${CFLAGS} is a cmake variable nobody sets,
-  # and it is relic's own knob for exactly this. Cross-compiling for Windows
-  # there is no system gmp to fall back on, which is why only mingw needs it.
-  $(package)_config_opts_mingw32+= -DCFLAGS=-I$(host_prefix)/include
 
 
   ifneq ($(darwin_native_toolchain),)
