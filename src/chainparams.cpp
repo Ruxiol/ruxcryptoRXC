@@ -879,7 +879,16 @@ public:
         // nothing can stake, no blocks are produced, and the transaction that would
         // consolidate the dust can never confirm. Lowering it cannot invalidate
         // history: every stake already made used an output above the old figure.
-        consensus.nStakeMinAmount = 10 * COIN;     // regtest
+        // One, so mixing and staking can be tested together.
+        // PrivateSend cuts coins into 10.0001 and smaller, so at a threshold of ten
+        // only the largest denomination could stake and a mixing wallet lost most of
+        // its weight -- measured at 430 of 10,000. Nothing was wrong with either
+        // feature; they simply could not be exercised at once. Mainnet keeps its own
+        // threshold, where the two really are exclusive and the wallet says so.
+        //
+        // Lowering it cannot invalidate history: it only widens which outputs may
+        // stake, and every stake already in a chain used one above the old figure.
+        consensus.nStakeMinAmount = 1 * COIN;      // regtest
         consensus.nMNCollateral = 100 * COIN;
         consensus.nMNCollateralPostFork = 1000 * COIN;
         consensus.nStakeMinConfirmations = 1;      // regtest: bez cekanja
