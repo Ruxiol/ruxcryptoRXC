@@ -124,6 +124,23 @@ unsigned int static KimotoGravityWell(const CBlockIndex* pindexLast, const Conse
 unsigned int static DarkGravityWave(const CBlockIndex* pindexLast, const CBlockHeader *pblock, const Consensus::Params& params, bool fProofOfStake) {
     /* current difficulty formula, ruxcrypto - DarkGravity v3, written by Evan Duffield - evan@ruxcrypto.org */
     const arith_uint256 bnPowLimit = UintToArith256(fProofOfStake ? params.posLimit : params.powLimit);
+
+    // Regtest asks for no retargeting, and only the Bitcoin-style retarget ever
+    // honoured that -- this chain retargets here, so difficulty moved anyway and
+    // the flag did nothing.
+    //
+    // On a test chain that is not a detail. Mining a few hundred blocks slowed
+    // to a crawl as the average caught up with the burst, and stake difficulty
+    // swung across orders of magnitude from one block to the next, which makes
+    // every timing test meaningless. Held at the limit for the block's own type,
+    // a regtest chain produces blocks at a predictable rate.
+    //
+    // Only regtest sets the flag; every other network retargets exactly as
+    // before.
+    if (params.fPowNoRetargeting) {
+        return bnPowLimit.GetCompact();
+    }
+
     int64_t nPastBlocks = 24;
 
     // make sure we have at least (nPastBlocks + 1) blocks, otherwise just return powLimit
