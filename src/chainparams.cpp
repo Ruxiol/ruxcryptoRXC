@@ -858,7 +858,13 @@ public:
         consensus.DIP0003Height = 432;
         consensus.DIP0003EnforcementHeight = 500;
         consensus.nPoSForkHeight = 200;   // regtest: namjerno nisko da se fork moze testirati
-        consensus.nPoWDisableHeight = 300; // regtest
+        // Raised so a test chain can still be funded. Proof-of-work ending at 300
+        // was proved on this very chain -- a work block at that height was refused
+        // with pow-ended -- and once proved, the only thing the low value does is
+        // leave regtest with no way to create coins, since staking alone cannot
+        // outrun what the tests spend. Raising it invalidates nothing: the rule
+        // only rejects work blocks above the height, and there are none.
+        consensus.nPoWDisableHeight = 100000; // regtest
         // Ten, which is exactly the post-fork block reward here.
         // At a hundred a regtest chain dries itself out: rewards arrive in tens,
         // so once the large outputs are spent -- on a masternode collateral, say --

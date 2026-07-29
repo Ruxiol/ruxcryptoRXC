@@ -2637,6 +2637,8 @@ UniValue getstakinginfo(const JSONRPCRequest& request)
     obj.push_back(Pair("eligible_outputs", st.eligibleOutputs));
     obj.push_back(Pair("eligible_balance", ValueFromAmount(st.eligibleBalance)));
     obj.push_back(Pair("difficulty", st.difficulty));
+    obj.push_back(Pair("network_weight", st.networkWeight));
+    obj.push_back(Pair("target_spacing", st.targetSpacing));
     obj.push_back(Pair("expected_time", st.expectedSeconds));
     obj.push_back(Pair("min_amount", ValueFromAmount(consensus.nStakeMinAmount)));
     obj.push_back(Pair("mn_collateral", ValueFromAmount(GetMNCollateralAmount(chainActive.Height() + 1))));

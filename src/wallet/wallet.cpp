@@ -3298,6 +3298,29 @@ CWallet::StakingStatus CWallet::GetStakingStatus()
         while (nShift < 29) { ret.difficulty *= 256.0; nShift++; }
         while (nShift > 29) { ret.difficulty /= 256.0; nShift--; }
 
+        // What the whole network is staking.
+        //
+        // The same arithmetic as below, read backwards: the network finds a
+        // block every nTargetSpacing seconds, so the weight that produces that
+        // rate is (2^256 / target) * slot / spacing. Nothing here assumes how
+        // many wallets are online -- the target already carries that.
+        ret.targetSpacing = GetTargetSpacing(chainActive.Height() + 1, consensus);
+        {
+            arith_uint256 bnTarget;
+            bool fNegative, fOverflow;
+            bnTarget.SetCompact(nBits, &fNegative, &fOverflow);
+            if (!fNegative && !fOverflow && bnTarget != 0 && ret.targetSpacing > 0) {
+                arith_uint256 bnPerCoin = (~arith_uint256(0)) / bnTarget;
+                arith_uint256 bnSlot(consensus.nStakeTimestampMask + 1);
+                arith_uint256 bnSpacing((uint64_t)ret.targetSpacing);
+                if (bnPerCoin.bits() < 220) {
+                    arith_uint256 bnNet = bnPerCoin * bnSlot / bnSpacing;
+                    if (bnNet.bits() <= 63)
+                        ret.networkWeight = (int64_t)bnNet.GetLow64();
+                }
+            }
+        }
+
         if (ret.weight > 0) {
             // One attempt per timestamp slot, succeeding with probability
             // weight*target/2^256, so the wait is the reciprocal. Divide the

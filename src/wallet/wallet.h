@@ -978,6 +978,11 @@ public:
         CAmount eligibleBalance = 0;   //!< their total
         double difficulty = 0;         //!< the STAKE difficulty, not the tip's
         int64_t expectedSeconds = -1;  //!< rough wait, -1 when unknowable
+        /** Everyone's weight, not just ours: derived from the same target the
+         *  kernel is checked against, so it needs no guess about who else is
+         *  online. Zero when it cannot be computed. */
+        int64_t networkWeight = 0;
+        int64_t targetSpacing = 0;
         //! The outputs actually doing the work. A staker's first question when
         //! nothing is happening is which coins are in and which are sitting out.
         std::vector<StakingOutput> outputs;
