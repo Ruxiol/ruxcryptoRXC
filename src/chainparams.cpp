@@ -886,7 +886,11 @@ public:
         consensus.nStakeTimestampMask = 15;
         consensus.nPowTargetSpacingPostFork = 2 * 60;
         consensus.DIP0003EnforcementHash = uint256();
-        consensus.powLimit = uint256S("0000ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
+        // Left where it was: the regtest genesis block was mined against this
+        // limit, and tightening it makes the chain refuse to load its own first
+        // block. Only the stake limit needed changing -- proof-of-work here just
+        // funds the chain, and being easy is the point.
+        consensus.powLimit = uint256S("7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"); // ~uint256(0) >> 1
         consensus.posLimit = uint256S("0000ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
         consensus.nPowTargetTimespan = 10 * 60;
         consensus.nPowTargetSpacing = 5 * 60;
