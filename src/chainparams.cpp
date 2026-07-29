@@ -834,6 +834,14 @@ public:
     CRegTestParams() {
         strNetworkID = "regtest";
         consensus.nSubsidyHalvingInterval = 150;
+        // Regtest never set these, and Consensus::Params does not initialise them,
+        // so GetBlockSubsidy multiplied by whatever was in that memory. They also
+        // solve a practical problem: a test chain has to be funded before it can
+        // test anything, and at fifty a block that takes thousands of blocks.
+        // Ten times the base for the first 250 blocks is about 97,000 RXC, which
+        // is enough to set up masternodes and still have coins to spend.
+        consensus.nHighSubsidyBlocks = 250;
+        consensus.nHighSubsidyFactor = 10;
         consensus.nMasternodePaymentsStartBlock = 240;
         consensus.nMasternodePaymentsIncreaseBlock = 350;
         consensus.nMasternodePaymentsIncreasePeriod = 10;
