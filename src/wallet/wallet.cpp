@@ -3390,18 +3390,38 @@ bool CWallet::CreateCoinStake(unsigned int nBits, uint32_t nTime, const uint256&
         if (!GetKey(keyID, keyOut))
             continue;
 
+        // Return the stake to a fresh address.
+        //
+        // Paying it back to the same script published the staker's address in
+        // every block they won and tied all of their outputs to that one name.
+        // The block signature is verified against the key in this transaction's
+        // input, so the output no longer has to name the signer and can be a
+        // key nobody has seen.
+        //
+        // Only for a pay-to-pubkey-hash input: a pay-to-pubkey scriptSig
+        // carries no key, so for those the verifier still has to read it off
+        // the output and the script has to stay as it was.
+        CScript scriptOut = txout.scriptPubKey;
+        CReserveKey reservekey(this);
+        CPubKey pubkeyFresh;
+        if (whichType == TX_PUBKEYHASH && reservekey.GetReservedKey(pubkeyFresh, true)) {
+            scriptOut = GetScriptForDestination(pubkeyFresh.GetID());
+        }
+
         txCoinStake = CMutableTransaction();
         txCoinStake.vin.push_back(CTxIn(prevout));
         // vout[0] empty: this is what makes the transaction a coinstake, and
         // what every reader of the block recognises it by.
         txCoinStake.vout.push_back(CTxOut(0, CScript()));
-        // Same value, same script. A coinstake proves; it does not pay.
-        txCoinStake.vout.push_back(CTxOut(txout.nValue, txout.scriptPubKey));
+        // Same value, new script. A coinstake proves; it does not pay.
+        txCoinStake.vout.push_back(CTxOut(txout.nValue, scriptOut));
 
         if (!SignSignature(*this, txout.scriptPubKey, txCoinStake, 0, SIGHASH_ALL)) {
             LogPrintf("CreateCoinStake -- failed to sign the staked input\n");
             continue;
         }
+
+        reservekey.KeepKey();
 
         LogPrintf("CreateCoinStake -- found a stake: %s:%d value=%d nTime=%u\n",
                   prevout.hash.ToString(), prevout.n, txout.nValue, nTime);

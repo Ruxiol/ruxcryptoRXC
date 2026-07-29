@@ -43,34 +43,28 @@ bool CheckBlockSignature(const CBlock& block)
     if (block.vchBlockSig.empty())
         return false;
 
-    // vout[0] of a coinstake is the empty marker, so the staked value -- and the
-    // script naming its owner -- is in vout[1].
-    if (block.vtx[1]->vout.size() < 2)
-        return false;
-    const CTxOut& txout = block.vtx[1]->vout[1];
-
-    txnouttype whichType;
-    std::vector<std::vector<unsigned char> > vSolutions;
-    if (!Solver(txout.scriptPubKey, whichType, vSolutions))
+    if (block.vtx[1]->vout.size() < 2 || block.vtx[1]->vin.empty())
         return false;
 
-    if (whichType == TX_PUBKEY) {
-        // Pay-to-pubkey hands us the key directly.
-        return CPubKey(vSolutions[0]).Verify(block.GetHash(), block.vchBlockSig);
-    }
-
-    if (whichType == TX_PUBKEYHASH) {
-        // Pay-to-pubkey-hash only commits to a hash of the key, so the script
-        // alone is not enough. But the coinstake spends an input the same key
-        // controls, and a P2PKH scriptSig is <sig> <pubkey> -- so the key is
-        // already on the chain, one transaction over. Take it from there and
-        // confirm it really does hash to what the output demands, otherwise an
-        // attacker could simply supply a key of their own choosing.
-        if (block.vtx[1]->vin.empty())
-            return false;
-
-        const CScript& scriptSig = block.vtx[1]->vin[0].scriptSig;
-        std::vector<unsigned char> vchPubKey;
+    // The signing key comes from the coinstake's INPUT, not from its output.
+    //
+    // Reading it from the output forced the stake to be paid back to the same
+    // address it came from -- that was the only way the verifier could find the
+    // key. The cost was privacy: a staker's address appeared in every block they
+    // ever won, and every output they held was threaded onto that one public
+    // name for anyone reading the chain. Proof-of-work has nothing like it.
+    //
+    // The input proves ownership just as well, and is the thing that actually
+    // does. A P2PKH scriptSig is <sig> <pubkey>, and ConnectBlock's script
+    // validation already establishes that this key may spend the staked coin --
+    // so a signature made by it is exactly the proof this check is looking for,
+    // and the output is then free to be a fresh address every time.
+    //
+    // Old blocks are unaffected: they paid the stake back to the same key, so
+    // input and output name the same signer and both readings agree.
+    const CScript& scriptSig = block.vtx[1]->vin[0].scriptSig;
+    std::vector<unsigned char> vchPubKey;
+    {
         CScript::const_iterator pc = scriptSig.begin();
         opcodetype opcode;
         std::vector<unsigned char> vchPush;
@@ -79,20 +73,23 @@ bool CheckBlockSignature(const CBlock& block)
                 return false;  // a staking scriptSig is pushes only
             vchPubKey = vchPush;  // keep the last push: the pubkey
         }
-
-        CPubKey pubKey(vchPubKey);
-        if (!pubKey.IsValid())
-            return false;
-        if (CKeyID(uint160(vSolutions[0])) != pubKey.GetID())
-            return false;
-
-        return pubKey.Verify(block.GetHash(), block.vchBlockSig);
     }
 
-    // Anything else -- multisig, bare scripts, P2SH -- cannot stake. Keeping the
-    // staking output to these two plain forms is what lets the check above stay
-    // this simple, and there is no demand for the rest.
-    return false;
+    CPubKey pubKey(vchPubKey);
+    if (pubKey.IsValid())
+        return pubKey.Verify(block.GetHash(), block.vchBlockSig);
+
+    // A pay-to-pubkey input carries no key in its scriptSig, only a signature,
+    // so for those the output still has to name the signer -- and the wallet
+    // pays such a stake back to the same script for exactly that reason.
+    txnouttype whichType;
+    std::vector<std::vector<unsigned char> > vSolutions;
+    if (!Solver(block.vtx[1]->vout[1].scriptPubKey, whichType, vSolutions))
+        return false;
+    if (whichType != TX_PUBKEY)
+        return false;
+
+    return CPubKey(vSolutions[0]).Verify(block.GetHash(), block.vchBlockSig);
 }
 
 bool IsQuorumTypeActive(Consensus::LLMQType type, int nHeight, const Consensus::Params& params)
