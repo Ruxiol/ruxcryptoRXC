@@ -840,8 +840,8 @@ public:
         // test anything, and at fifty a block that takes thousands of blocks.
         // Ten times the base for the first 250 blocks is about 97,000 RXC, which
         // is enough to set up masternodes and still have coins to spend.
-        consensus.nHighSubsidyBlocks = 250;
-        consensus.nHighSubsidyFactor = 10;
+        consensus.nHighSubsidyBlocks = 50;
+        consensus.nHighSubsidyFactor = 40;
         consensus.nMasternodePaymentsStartBlock = 240;
         consensus.nMasternodePaymentsIncreaseBlock = 350;
         consensus.nMasternodePaymentsIncreasePeriod = 10;
@@ -865,7 +865,7 @@ public:
         consensus.DIP0001Height = 2000;
         consensus.DIP0003Height = 432;
         consensus.DIP0003EnforcementHeight = 500;
-        consensus.nPoSForkHeight = 200;   // regtest: namjerno nisko da se fork moze testirati
+        consensus.nPoSForkHeight = 60;    // regtest
         // Raised so a test chain can still be funded. Proof-of-work ending at 300
         // was proved on this very chain -- a work block at that height was refused
         // with pow-ended -- and once proved, the only thing the low value does is
@@ -886,12 +886,12 @@ public:
         consensus.nStakeTimestampMask = 15;
         consensus.nPowTargetSpacingPostFork = 2 * 60;
         consensus.DIP0003EnforcementHash = uint256();
-        consensus.powLimit = uint256S("7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"); // ~uint256(0) >> 1
-        consensus.posLimit = uint256S("7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
+        consensus.powLimit = uint256S("0000ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
+        consensus.posLimit = uint256S("0000ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
         consensus.nPowTargetTimespan = 10 * 60;
         consensus.nPowTargetSpacing = 5 * 60;
         consensus.fPowAllowMinDifficultyBlocks = true;
-        consensus.fPowNoRetargeting = true;
+        consensus.fPowNoRetargeting = false;
         consensus.nPowKGWHeight = 1; // same as mainnet
         consensus.nPowDGWHeight = 1; // same as mainnet
         consensus.nRuleChangeActivationThreshold = 108; // 75% for testchains
